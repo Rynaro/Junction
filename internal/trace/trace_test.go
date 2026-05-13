@@ -109,7 +109,9 @@ func TestAppendVerify_AllPass(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	j.AppendVerify("msg-001", true, true, true, true, "")
+	if err := j.AppendVerify("msg-001", true, true, true, true, ""); err != nil {
+		t.Fatalf("AppendVerify failed: %v", err)
+	}
 	j.Close()
 
 	events, _ := trace.ReadAll(j.Path())
@@ -143,10 +145,18 @@ func TestJournal_MultipleAppends(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	j.AppendEnvelope("m1", "", "atlas@1.4.2", "spectra@4.2.11", "PROPOSE", "sha256", "m", "standard", 100)
-	j.AppendVerify("m1", true, true, true, true, "")
-	j.AppendDispatch("S0", "m1", "atlas@1.4.2", "spectra@4.2.11")
-	j.AppendExit("S0", 0, "")
+	if err := j.AppendEnvelope("m1", "", "atlas@1.4.2", "spectra@4.2.11", "PROPOSE", "sha256", "m", "standard", 100); err != nil {
+		t.Fatalf("AppendEnvelope failed: %v", err)
+	}
+	if err := j.AppendVerify("m1", true, true, true, true, ""); err != nil {
+		t.Fatalf("AppendVerify failed: %v", err)
+	}
+	if err := j.AppendDispatch("S0", "m1", "atlas@1.4.2", "spectra@4.2.11"); err != nil {
+		t.Fatalf("AppendDispatch failed: %v", err)
+	}
+	if err := j.AppendExit("S0", 0, ""); err != nil {
+		t.Fatalf("AppendExit failed: %v", err)
+	}
 	j.Close()
 
 	events, err := trace.ReadAll(j.Path())
@@ -174,7 +184,9 @@ func TestAppendError(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	j.AppendError("S1", "something went wrong")
+	if err := j.AppendError("S1", "something went wrong"); err != nil {
+		t.Fatalf("AppendError failed: %v", err)
+	}
 	j.Close()
 
 	events, _ := trace.ReadAll(j.Path())
