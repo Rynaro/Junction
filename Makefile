@@ -56,13 +56,13 @@ shell: cache-dirs
 # Pre-push hook (.githooks/pre-push) invokes this target.
 # CI (.github/workflows/ci.yml) invokes this target in the check job.
 check: cache-dirs
-	$(COMPOSE) run --rm dev sh -c "go vet ./... && go test -race ./... && golangci-lint run ./..."
+	$(COMPOSE) run --rm -e CGO_ENABLED=1 dev sh -c "go vet ./... && go test -race ./... && golangci-lint run ./..."
 
 test: cache-dirs
 	$(COMPOSE) run --rm dev go test ./...
 
 test-race: cache-dirs
-	$(COMPOSE) run --rm dev go test -race ./...
+	$(COMPOSE) run --rm -e CGO_ENABLED=1 dev go test -race ./...
 
 lint: cache-dirs
 	$(COMPOSE) run --rm dev golangci-lint run ./...
