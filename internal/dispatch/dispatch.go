@@ -68,6 +68,15 @@ type Result struct {
 
 	// ExitCode is the subprocess exit code (0 on success).
 	ExitCode int
+
+	// ImageRef is the container image reference used for dispatch.
+	// Non-empty only when a ContainerExecutor dispatched this step.
+	ImageRef string
+
+	// ImageDigest is the resolved image digest (sha256:...).
+	// Non-empty only when a ContainerExecutor dispatched this step and the
+	// digest was available after the run. Recorded in the trace (spec §5.4).
+	ImageDigest string
 }
 
 // Executor is the interface for invoking an Eidolon. F1 ships a single

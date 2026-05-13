@@ -136,6 +136,7 @@ func runCmd(args []string) error {
 	_ = journal.AppendDispatch(stepID, env.MessageID,
 		env.From.Eidolon+"@"+env.From.Version,
 		env.To.Eidolon+"@"+env.To.Version,
+		"shell", "",
 	)
 
 	result, dispErr := exec.Execute(ctx, dispatch.Request{

@@ -151,7 +151,7 @@ func TestJournal_MultipleAppends(t *testing.T) {
 	if err := j.AppendVerify("m1", true, true, true, true, ""); err != nil {
 		t.Fatalf("AppendVerify failed: %v", err)
 	}
-	if err := j.AppendDispatch("S0", "m1", "atlas@1.4.2", "spectra@4.2.11"); err != nil {
+	if err := j.AppendDispatch("S0", "m1", "atlas@1.4.2", "spectra@4.2.11", "shell", ""); err != nil {
 		t.Fatalf("AppendDispatch failed: %v", err)
 	}
 	if err := j.AppendExit("S0", 0, ""); err != nil {
