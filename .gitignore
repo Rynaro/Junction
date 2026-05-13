@@ -1,0 +1,21 @@
+# Build output
+bin/
+dist/
+*.test
+*.out
+coverage.out
+coverage.html
+
+# Local state
+.junction/
+
+# Editors
+.vscode/
+.idea/
+*.swp
+*.swo
+.DS_Store
+
+# Go module cache (when bind-mounted via docker compose)
+.gocache/
+.gomodcache/

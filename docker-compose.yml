@@ -1,0 +1,34 @@
+# Dev compose file. Drives `make dev`, `make test`, `make lint`.
+#
+# Bind-mounts the working tree into /workspace and runs as the host UID
+# so module-cache and build-cache files don't end up root-owned on the
+# host. Per `feedback_home_eacces_signature`, HOME is forced to /tmp
+# inside the container so a baked-unreadable $HOME never trips Go.
+
+services:
+  dev:
+    build:
+      context: .
+      target: dev
+    image: junction-dev:local
+    user: "${HOST_UID:-1000}:${HOST_GID:-1000}"
+    working_dir: /workspace
+    volumes:
+      - .:/workspace
+      # Host bind-mounts for Go caches. Using bind mounts rather than
+      # named volumes so the cache dirs inherit the host UID's
+      # ownership at first use (named volumes initialize root-owned,
+      # breaking non-root container runs). Both paths are gitignored.
+      - ./.gocache:/tmp/.gocache
+      - ./.gomodcache:/tmp/.gomodcache
+      - ./.gocache/golangci-lint:/tmp/.golangci-lint
+    environment:
+      HOME: /tmp
+      GOCACHE: /tmp/.gocache
+      GOMODCACHE: /tmp/.gomodcache
+      GOLANGCI_LINT_CACHE: /tmp/.golangci-lint
+      CGO_ENABLED: "0"
+    # Default service waits for `make` to exec into it; no implicit run.
+    command: ["bash"]
+    tty: true
+    stdin_open: true
