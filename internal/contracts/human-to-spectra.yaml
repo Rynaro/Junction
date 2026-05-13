@@ -1,0 +1,21 @@
+contract_version: "1.0"
+from: human
+to: spectra
+edge_origin: roster
+performatives_allowed:
+  - REQUEST
+  - INFORM
+  - CRITIQUE
+  - REFUSE
+  - ACKNOWLEDGE
+  - ESCALATE
+artifacts:
+  - kind: prompt
+    schema_ref: ../schemas/per-eidolon/prompt.v1.json
+trust_level: standard
+notes: >
+  A human originator may REQUEST spectra to author a spec, INFORM it with
+  additional context, CRITIQUE a prior spec for revision, REFUSE a proposed
+  spec, ACKNOWLEDGE a proposed artefact, or ESCALATE a blocker.
+  Human originators MUST NOT emit PROPOSE, DECIDE, DELEGATE, or RESUME
+  (spec §5.7, F-HUMAN-EDGE).

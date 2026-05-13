@@ -1,0 +1,28 @@
+contract_version: "1.0"
+from: forge
+to: spectra
+edge_origin: roster
+performatives_allowed:
+  - PROPOSE
+  - INFORM
+  - CRITIQUE
+artifacts:
+  - kind: reasoning-report
+    schema_ref: ../schemas/per-eidolon/reasoning-report.v1.json
+    required_sections:
+      - decision
+      - hypotheses_summary
+      - reversal_conditions
+      - alternatives_considered
+    evidence_anchor_required: false
+context_delta:
+  token_budget_max: 3000
+  required_handles: []
+trust_level: standard
+notes: >
+  FORGE returns a reasoning report to SPECTRA in response to
+  spectra→forge consultation. Listed in roster: forge.handoffs.lateral
+  contains spectra. CRITIQUE is reserved for the REFORGE case where
+  FORGE refuses the scoring frame (e.g. because the rubric dimensions
+  themselves are mis-calibrated for the change in scope) rather than
+  picking a winner.

@@ -1,0 +1,22 @@
+contract_version: "1.0"
+from: human
+to: forge
+edge_origin: roster
+performatives_allowed:
+  - REQUEST
+  - INFORM
+  - CRITIQUE
+  - REFUSE
+  - ACKNOWLEDGE
+  - ESCALATE
+artifacts:
+  - kind: prompt
+    schema_ref: ../schemas/per-eidolon/prompt.v1.json
+trust_level: standard
+notes: >
+  A human originator may REQUEST forge to perform a quality gate or RFC
+  review, INFORM it with additional context, CRITIQUE a prior decision,
+  REFUSE a proposed decision, ACKNOWLEDGE a proposed artefact, or ESCALATE a
+  blocker.
+  Human originators MUST NOT emit PROPOSE, DECIDE, DELEGATE, or RESUME
+  (spec §5.7, F-HUMAN-EDGE).

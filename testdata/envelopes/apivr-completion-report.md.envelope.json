@@ -1,0 +1,44 @@
+{
+  "envelope_version": "1.0",
+  "message_id": "cff0c38e-493c-46d5-b169-a77d2c012da8",
+  "thread_id": "4042b976-63b7-4bc8-bbcf-15205a8e0ffd",
+  "parent_id": "5be40944-ed95-4ff2-8787-a5f381cee754",
+  "from": {
+    "eidolon": "apivr",
+    "version": "3.0.5"
+  },
+  "to": {
+    "eidolon": "idg",
+    "version": "1.1.5"
+  },
+  "performative": "PROPOSE",
+  "edge_origin": "roster",
+  "objective": "Hand off completion report for chronicling.",
+  "artifact": {
+    "kind": "apivr-completion-report",
+    "schema_version": "1.0",
+    "path": "apivr-completion-report.md",
+    "sha256": "46f4996f61a6a569c638314c342824f3b264f8991742e1879ae82249facd4cda",
+    "size_bytes": 1024
+  },
+  "context_delta": {
+    "token_budget": 5000,
+    "tokens_used": 280,
+    "input_handles": [],
+    "summary": "Both stories implemented. -36 lines net. 14/14 bats pass. One Reflect trip fixed via editorconfig."
+  },
+  "constraints": {
+    "trust_level": "standard"
+  },
+  "confidence": 0.95,
+  "integrity": {
+    "method": "sha256",
+    "value": "46f4996f61a6a569c638314c342824f3b264f8991742e1879ae82249facd4cda"
+  },
+  "trace": {
+    "ts": "2026-05-12T00:12:14Z",
+    "host": "raw",
+    "model": "unknown",
+    "tier": "standard"
+  }
+}

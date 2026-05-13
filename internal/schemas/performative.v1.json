@@ -1,0 +1,24 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/Rynaro/eidolons-ecl/blob/v2.0.0/schemas/performative.v1.json",
+  "title": "ECL performative enum v1",
+  "description": "The closed set of ten performatives defined by ECL v1.0 §2.",
+  "$defs": {
+    "performative": {
+      "enum": [
+        "REQUEST",
+        "INFORM",
+        "PROPOSE",
+        "CRITIQUE",
+        "DECIDE",
+        "DELEGATE",
+        "ACKNOWLEDGE",
+        "ESCALATE",
+        "RESUME",
+        "REFUSE"
+      ],
+      "description": "Sender's declared intent. Receivers SHALL interpret the payload through this lens."
+    }
+  },
+  "$ref": "#/$defs/performative"
+}

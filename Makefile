@@ -22,7 +22,12 @@ export HOST_UID HOST_GID
 VERSION ?= 0.0.0-dev
 IMAGE   ?= junction:local
 
-.PHONY: help dev shell test test-race lint fmt vet tidy build image clean doctor
+.PHONY: help dev shell test test-race lint fmt vet tidy build image clean doctor cache-dirs
+
+# Pre-create bind-mount source dirs so Docker (running as root on CI)
+# doesn't create them root-owned before the container can write to them.
+cache-dirs:
+	@mkdir -p .gocache .gomodcache .gocache/golangci-lint
 
 help:
 	@echo "Junction — developer entry points"
@@ -41,25 +46,25 @@ help:
 
 dev: shell
 
-shell:
+shell: cache-dirs
 	$(COMPOSE) run --rm dev bash
 
-test:
+test: cache-dirs
 	$(COMPOSE) run --rm dev go test ./...
 
-test-race:
+test-race: cache-dirs
 	$(COMPOSE) run --rm dev go test -race ./...
 
-lint:
+lint: cache-dirs
 	$(COMPOSE) run --rm dev golangci-lint run ./...
 
-fmt:
+fmt: cache-dirs
 	$(COMPOSE) run --rm dev gofmt -w .
 
-vet:
+vet: cache-dirs
 	$(COMPOSE) run --rm dev go vet ./...
 
-tidy:
+tidy: cache-dirs
 	$(COMPOSE) run --rm dev go mod tidy
 
 # Release build runs in the same dev image (CGO disabled, trimpath).
@@ -82,7 +87,7 @@ image:
 	    -t $(IMAGE) \
 	    .
 
-doctor:
+doctor: cache-dirs
 	@echo "docker:"
 	@docker version --format '  {{.Server.Version}}' 2>/dev/null || echo "  not available"
 	@echo "docker compose:"
