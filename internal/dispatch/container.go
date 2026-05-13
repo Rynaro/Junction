@@ -109,10 +109,11 @@ func (c *ContainerExecutor) Execute(ctx context.Context, req Request) (Result, e
 	}
 
 	// Copy the input envelope into the in/ dir if it's not already there.
-	containerEnvPath := "/junction/io/in/" + filepath.Base(req.EnvelopePath)
+	containerEnvPath := ""
 	if req.EnvelopePath != "" {
+		containerEnvPath = "/junction/io/in/" + filepath.Base(req.EnvelopePath)
 		dst := filepath.Join(inDir, filepath.Base(req.EnvelopePath))
-		if _, err := os.Stat(dst); errors.Is(err, os.ErrNotExist) {
+		if _, statErr := os.Stat(dst); errors.Is(statErr, os.ErrNotExist) {
 			if copyErr := copyFile(req.EnvelopePath, dst); copyErr != nil {
 				return Result{}, fmt.Errorf("container: staging envelope: %w", copyErr)
 			}
@@ -150,9 +151,7 @@ func (c *ContainerExecutor) Execute(ctx context.Context, req Request) (Result, e
 
 	dockerArgs = append(dockerArgs, image)
 
-	stdout, stderr, runErr := c.runner().Run(ctx, nil, "docker", dockerArgs...)
-
-	_ = stderr // stderr goes to docker's own stderr; captured for diagnostics only
+	_, _, runErr := c.runner().Run(ctx, nil, "docker", dockerArgs...)
 
 	exitCode := 0
 	if runErr != nil {
@@ -170,8 +169,6 @@ func (c *ContainerExecutor) Execute(ctx context.Context, req Request) (Result, e
 			ImageRef:           image,
 		}, fmt.Errorf("%w: exit %d", ErrDispatchFailed, exitCode)
 	}
-
-	_ = stdout // informational
 
 	// Fetch the image digest after a successful run for the trace record.
 	imageDigest, _ := c.imageDigest(ctx, image)

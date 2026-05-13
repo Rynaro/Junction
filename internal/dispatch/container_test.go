@@ -58,14 +58,16 @@ func joinArgs(args []string) string {
 }
 
 func containsStr(s, substr string) bool {
-	return len(substr) == 0 || (len(s) >= len(substr) && func() bool {
-		for i := 0; i+len(substr) <= len(s); i++ {
-			if s[i:i+len(substr)] == substr {
-				return true
-			}
+	if len(substr) == 0 {
+		return true
+	}
+	n := len(substr)
+	for i := 0; i+n <= len(s); i++ {
+		if s[i:i+n] == substr {
+			return true
 		}
-		return false
-	}())
+	}
+	return false
 }
 
 // ─── helpers ─────────────────────────────────────────────────────────────────
