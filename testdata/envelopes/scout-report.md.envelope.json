@@ -1,0 +1,44 @@
+{
+  "envelope_version": "1.0",
+  "message_id": "cf492a47-a1ee-4622-ba33-d16a0514cfe9",
+  "thread_id": "4042b976-63b7-4bc8-bbcf-15205a8e0ffd",
+  "parent_id": null,
+  "from": {
+    "eidolon": "atlas",
+    "version": "1.4.2"
+  },
+  "to": {
+    "eidolon": "spectra",
+    "version": "4.2.11"
+  },
+  "performative": "PROPOSE",
+  "edge_origin": "roster",
+  "objective": "Hand off scout-report for install.sh dead-code cleanup spec authoring.",
+  "artifact": {
+    "kind": "scout-report",
+    "schema_version": "1.0",
+    "path": "scout-report.md",
+    "sha256": "0883c61ab45d1b5b10f45574f0f56ccf9cc237d7e5558c2427d2e0acfaa326cb",
+    "size_bytes": 1511
+  },
+  "context_delta": {
+    "token_budget": 4000,
+    "tokens_used": 380,
+    "input_handles": [],
+    "summary": "Four findings on install.sh dead code; one gap (Cursor wiring trace) deferred. Scope bounded to install.sh."
+  },
+  "constraints": {
+    "trust_level": "standard"
+  },
+  "confidence": 0.92,
+  "integrity": {
+    "method": "sha256",
+    "value": "0883c61ab45d1b5b10f45574f0f56ccf9cc237d7e5558c2427d2e0acfaa326cb"
+  },
+  "trace": {
+    "ts": "2026-05-12T00:12:14Z",
+    "host": "raw",
+    "model": "unknown",
+    "tier": "standard"
+  }
+}

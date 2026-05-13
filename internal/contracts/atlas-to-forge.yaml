@@ -1,0 +1,28 @@
+contract_version: "1.0"
+from: atlas
+to: forge
+edge_origin: roster
+performatives_allowed:
+  - REQUEST
+  - CRITIQUE
+artifacts:
+  - kind: reasoning-request
+    schema_ref: ../schemas/per-eidolon/_base-profile.v1.json
+    required_sections:
+      - question
+      - context
+      - constraints
+      - candidate_answers
+    evidence_anchor_required: false
+context_delta:
+  token_budget_max: 3000
+  required_handles: []
+trust_level: standard
+notes: >
+  ATLAS consults FORGE during the Locate or Synthesize phase when a
+  forensic finding or hand-off-target decision has more than one defensible
+  framing — e.g. competing call-graph entry points, ambiguous owner
+  attribution, or a structural choice that downstream consumers (APIVR-Δ
+  or SPECTRA) will see different consequences from. Listed in roster:
+  atlas.handoffs.lateral contains forge. Mirrors apivr-to-forge body
+  shape; FORGE methodology owns the response.

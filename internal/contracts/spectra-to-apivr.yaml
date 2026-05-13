@@ -1,0 +1,27 @@
+contract_version: "1.0"
+from: spectra
+to: apivr
+edge_origin: roster
+performatives_allowed:
+  - PROPOSE
+  - INFORM
+  - REFUSE
+artifacts:
+  - kind: spec
+    schema_ref: ../schemas/per-eidolon/spec.v1.json
+    required_sections:
+      - stories
+      - validation_gates
+      - agent_hints
+      - given_when_then
+    evidence_anchor_required: false
+context_delta:
+  token_budget_max: 6000
+  required_handles: []
+trust_level: standard
+notes: >
+  SPECTRA hands off a decision-ready specification for APIVR-Δ to implement.
+  Listed in roster: spectra.handoffs.downstream contains apivr. SPECTRA
+  emits the spec in dual format (Markdown + YAML/JSON state) per its
+  methodology; the envelope.artifact.path points at the Markdown file and
+  the YAML state lives alongside it.

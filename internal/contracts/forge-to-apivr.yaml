@@ -1,0 +1,29 @@
+contract_version: "1.0"
+from: forge
+to: apivr
+edge_origin: roster
+performatives_allowed:
+  - PROPOSE
+  - INFORM
+  - CRITIQUE
+artifacts:
+  - kind: reasoning-report
+    schema_ref: ../schemas/per-eidolon/reasoning-report.v1.json
+    required_sections:
+      - decision
+      - hypotheses_summary
+      - reversal_conditions
+      - alternatives_considered
+    evidence_anchor_required: false
+context_delta:
+  token_budget_max: 3000
+  required_handles: []
+trust_level: standard
+notes: >
+  FORGE returns the reasoning report to the requesting Eidolon. Listed in
+  roster: forge.handoffs.lateral contains apivr. CRITIQUE is reserved for
+  the case where FORGE deliberately reframes the question rather than
+  answering it (REFORGE pass). This contract is the representative shape
+  for all FORGE consultation reports; per-edge contracts forge→atlas,
+  forge→spectra, forge→idg, forge→vigil follow the same template and are
+  added per-PR as those edges are exercised.

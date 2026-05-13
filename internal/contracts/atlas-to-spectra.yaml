@@ -1,0 +1,27 @@
+contract_version: "1.0"
+from: atlas
+to: spectra
+edge_origin: roster
+performatives_allowed:
+  - PROPOSE
+  - INFORM
+  - REFUSE
+artifacts:
+  - kind: scout-report
+    schema_ref: ../schemas/per-eidolon/scout-report.v1.json
+    required_sections:
+      - decision_target
+      - findings
+      - gaps
+      - scope
+    evidence_anchor_required: true
+context_delta:
+  token_budget_max: 4000
+  required_handles:
+    - mission.md
+trust_level: standard
+notes: >
+  ATLAS hands off a finalised scout report for SPECTRA to consume during the
+  SCOPE phase. Listed in roster: atlas.handoffs.downstream contains spectra.
+  Source-of-truth row in methodology/composition.md ("ATLAS | SPECTRA |
+  scout-report.md + findings.json").

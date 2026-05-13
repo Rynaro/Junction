@@ -1,0 +1,44 @@
+{
+  "envelope_version": "1.0",
+  "message_id": "5be40944-ed95-4ff2-8787-a5f381cee754",
+  "thread_id": "4042b976-63b7-4bc8-bbcf-15205a8e0ffd",
+  "parent_id": "cf492a47-a1ee-4622-ba33-d16a0514cfe9",
+  "from": {
+    "eidolon": "spectra",
+    "version": "4.2.11"
+  },
+  "to": {
+    "eidolon": "apivr",
+    "version": "3.0.5"
+  },
+  "performative": "PROPOSE",
+  "edge_origin": "roster",
+  "objective": "Hand off cleanup spec; two stories, three validation gates.",
+  "artifact": {
+    "kind": "spec",
+    "schema_version": "1.0",
+    "path": "spec.md",
+    "sha256": "7bda0de86c492982ca0bd6b3e98c3f18a62e3e0da7429073f9f4500ed876fe36",
+    "size_bytes": 1612
+  },
+  "context_delta": {
+    "token_budget": 6000,
+    "tokens_used": 540,
+    "input_handles": [],
+    "summary": "Two stories: remove _legacy_wire_mcp and _warn_v0_target. Gates: bats + shellcheck + dry-run byte equivalence."
+  },
+  "constraints": {
+    "trust_level": "standard"
+  },
+  "confidence": 0.92,
+  "integrity": {
+    "method": "sha256",
+    "value": "7bda0de86c492982ca0bd6b3e98c3f18a62e3e0da7429073f9f4500ed876fe36"
+  },
+  "trace": {
+    "ts": "2026-05-12T00:12:14Z",
+    "host": "raw",
+    "model": "unknown",
+    "tier": "standard"
+  }
+}

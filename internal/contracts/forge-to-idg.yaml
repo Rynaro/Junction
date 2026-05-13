@@ -1,0 +1,27 @@
+contract_version: "1.0"
+from: forge
+to: idg
+edge_origin: roster
+performatives_allowed:
+  - PROPOSE
+  - INFORM
+  - CRITIQUE
+artifacts:
+  - kind: reasoning-report
+    schema_ref: ../schemas/per-eidolon/reasoning-report.v1.json
+    required_sections:
+      - decision
+      - hypotheses_summary
+      - reversal_conditions
+      - alternatives_considered
+    evidence_anchor_required: false
+context_delta:
+  token_budget_max: 3000
+  required_handles: []
+trust_level: standard
+notes: >
+  FORGE returns a reasoning report to IDG in response to idg→forge
+  consultation. Listed in roster: forge.handoffs.lateral contains idg.
+  CRITIQUE is reserved for the REFORGE case where FORGE declines to
+  adjudicate (e.g. because the conflicting sources require a fresh
+  observation rather than reasoning) and returns the question reframed.

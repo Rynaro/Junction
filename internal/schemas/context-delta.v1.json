@@ -1,0 +1,37 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/Rynaro/eidolons-ecl/blob/v2.0.0/schemas/context-delta.v1.json",
+  "title": "ECL context-delta v1",
+  "description": "The context_delta object embedded in an ECL envelope. Defined by ECL v1.0 §4.",
+  "type": "object",
+  "required": ["token_budget", "tokens_used", "input_handles", "summary"],
+  "properties": {
+    "token_budget": {
+      "type": "integer",
+      "minimum": 0,
+      "description": "Contract-declared maximum token count for this envelope."
+    },
+    "tokens_used": {
+      "type": "integer",
+      "minimum": 0,
+      "description": "Sender's good-faith estimate of tokens used. MUST be <= token_budget. ECL v1.0 §4.1.1."
+    },
+    "input_handles": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "anyOf": [
+          { "pattern": "^[^/].+$" },
+          { "pattern": "^ecl://thread/[0-9a-f-]{36}/message/[0-9a-f-]{36}$" }
+        ]
+      },
+      "description": "Relative paths or ecl:// URIs the receiver can re-read on demand. ECL v1.0 §4.3."
+    },
+    "summary": {
+      "type": "string",
+      "minLength": 1,
+      "description": "Prose describing what is new since parent_id. SHOULD be <= 200 tokens. ECL v1.0 §4.1.3."
+    }
+  },
+  "additionalProperties": false
+}

@@ -1,0 +1,24 @@
+contract_version: "1.0"
+from: apivr
+to: idg
+edge_origin: roster
+performatives_allowed:
+  - PROPOSE
+  - INFORM
+artifacts:
+  - kind: apivr-completion-report
+    schema_ref: ../schemas/per-eidolon/apivr-completion-report.v1.json
+    required_sections:
+      - what_built
+      - changes
+      - failures_and_why
+      - test_summary
+    evidence_anchor_required: false
+context_delta:
+  token_budget_max: 5000
+  required_handles: []
+trust_level: standard
+notes: >
+  APIVR-Δ hands off the completion artefact (session log + delta history +
+  completion report) for IDG to chronicle. Listed in roster:
+  apivr.handoffs.downstream contains idg.
