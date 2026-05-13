@@ -1,0 +1,17 @@
+#!/bin/sh
+# pre-push — runs make check before every push.
+#
+# Blocks the push if go vet, go test -race, or golangci-lint fails.
+# This mirrors CI exactly (see .github/workflows/ci.yml).
+#
+# One-time setup:
+#   git config core.hooksPath .githooks
+#
+# To skip in an emergency (not recommended):
+#   git push --no-verify
+
+set -e
+
+echo "[pre-push] running make check …"
+make check
+echo "[pre-push] check passed."

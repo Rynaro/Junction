@@ -95,10 +95,13 @@ prerequisites are Docker (with Compose v2) and `make`.
 # Build the dev image and open a shell inside it
 make dev
 
-# Run the test suite
+# Single source of truth for CI: vet + test -race + golangci-lint
+make check
+
+# Run the test suite only
 make test
 
-# Run the linter
+# Run the linter only
 make lint
 
 # Build the release binary (lands at ./bin/junction)
@@ -109,7 +112,21 @@ make image
 
 # Print the toolchain versions Junction sees inside the container
 make doctor
+
+# Run the single-Eidolon happy-path example (requires Docker)
+make demo
 ```
+
+### Git hook setup (one-time)
+
+Wire the pre-push hook so `make check` runs before every push — this
+mirrors CI exactly and prevents the three-iteration rework cycle from F1:
+
+```sh
+git config core.hooksPath .githooks
+```
+
+See `.githooks/README.md` for details.
 
 See `Makefile` for the full target list. The container forces
 `HOME=/tmp` and bind-mounts the working tree as the host UID so the
