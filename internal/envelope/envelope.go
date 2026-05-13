@@ -127,12 +127,6 @@ type Envelope struct {
 	Extensions map[string]json.RawMessage `json:"-"`
 }
 
-// rawEnvelope is used for JSON unmarshal to capture x_* extension fields.
-type rawEnvelope struct {
-	Envelope
-	Extra map[string]json.RawMessage
-}
-
 // UnmarshalJSON implements json.Unmarshaler to capture x_* extension fields.
 func (e *Envelope) UnmarshalJSON(data []byte) error {
 	// Use an alias to avoid infinite recursion.

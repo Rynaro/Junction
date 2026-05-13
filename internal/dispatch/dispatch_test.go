@@ -10,17 +10,10 @@ import (
 	"errors"
 	"os"
 	"path/filepath"
-	"runtime"
 	"testing"
 
 	"github.com/Rynaro/Junction/internal/dispatch"
 )
-
-// isLinux reports whether we're running on Linux (inside the container).
-// Some tests skip on macOS because /bin/sh behaviour differs slightly.
-func isLinux() bool {
-	return runtime.GOOS == "linux"
-}
 
 // writeTmpScript writes a small bash/sh script to a temp file and returns
 // its path with execute permission.
