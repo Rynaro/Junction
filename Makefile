@@ -84,8 +84,7 @@ sync-contracts: cache-dirs
 	  set -e; \
 	  REF=$$(cat internal/contracts/.eclref | tr -d "[:space:]"); \
 	  TMPDIR=$$(mktemp -d); \
-	  git clone --filter=blob:none --no-checkout https://github.com/Rynaro/eidolons-ecl.git "$$TMPDIR/ecl"; \
-	  git -C "$$TMPDIR/ecl" fetch --depth 1 origin "$$REF"; \
+	  git clone --filter=blob:none https://github.com/Rynaro/eidolons-ecl.git "$$TMPDIR/ecl"; \
 	  git -C "$$TMPDIR/ecl" checkout "$$REF"; \
 	  cp "$$TMPDIR/ecl/contracts/"*.yaml internal/contracts/; \
 	  DATE=$$(date +%Y-%m-%d); \
