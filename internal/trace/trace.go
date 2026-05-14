@@ -29,15 +29,16 @@ const DefaultTraceRoot = ".junction/threads"
 type EventKind string
 
 const (
-	KindEnvelope    EventKind = "envelope"
-	KindVerify      EventKind = "verify"
-	KindDispatch    EventKind = "dispatch"
-	KindExit        EventKind = "exit"
-	KindRefuse      EventKind = "refuse"
-	KindEscalate    EventKind = "escalate"
-	KindHumanInject EventKind = "human_inject"
-	KindResume      EventKind = "resume_marker"
-	KindError       EventKind = "error"
+	KindEnvelope      EventKind = "envelope"
+	KindVerify        EventKind = "verify"
+	KindDispatch      EventKind = "dispatch"
+	KindHostReasoning EventKind = "host_reasoning"
+	KindExit          EventKind = "exit"
+	KindRefuse        EventKind = "refuse"
+	KindEscalate      EventKind = "escalate"
+	KindHumanInject   EventKind = "human_inject"
+	KindResume        EventKind = "resume_marker"
+	KindError         EventKind = "error"
 )
 
 // Event is a single journal entry. All fields except Kind and TS are
@@ -66,9 +67,15 @@ type Event struct {
 	ExitCode    *int   `json:"exit_code,omitempty"`
 	Executor    string `json:"executor,omitempty"`     // "shell" | "container" (spec §5.4 round 4)
 	ImageDigest string `json:"image_digest,omitempty"` // populated when executor == "container"
+	Phase       string `json:"phase,omitempty"`        // "assemble" | "package" (F10-S1 two-phase; only for container dispatch)
 
 	// Error detail — present on error / refuse / escalate events.
 	Error string `json:"error,omitempty"`
+
+	// Host-reasoning context — present on host_reasoning events (F10-S1).
+	Input      string `json:"input,omitempty"`       // relative name of the prompt-bundle file
+	Output     string `json:"output,omitempty"`      // relative name of the reasoning.json file
+	DurationMS int64  `json:"duration_ms,omitempty"` // wall-clock duration in milliseconds
 
 	// Tracing metadata — present on envelope events.
 	IntegrityMethod string `json:"integrity_method,omitempty"`
@@ -202,6 +209,7 @@ func (j *Journal) AppendVerify(messageID string, schemaOK, integrityOK, edgeOK, 
 // AppendDispatch records that an Eidolon was dispatched for a step.
 // executor is "shell" or "container"; imageDigest is the container image
 // digest when executor == "container" (empty string for shell dispatches).
+// For two-phase container dispatch, use AppendDispatchPhase instead.
 func (j *Journal) AppendDispatch(stepID, messageID, from, to, executor, imageDigest string) error {
 	return j.Append(Event{
 		Kind:        KindDispatch,
@@ -211,6 +219,37 @@ func (j *Journal) AppendDispatch(stepID, messageID, from, to, executor, imageDig
 		To:          to,
 		Executor:    executor,
 		ImageDigest: imageDigest,
+	})
+}
+
+// AppendDispatchPhase records a single phase of a two-phase container dispatch
+// (F10-S1). phase must be "assemble" or "package". The Phase field is included
+// in the emitted JSON record so post-hoc trace inspection can correlate the two
+// records with their respective container invocations.
+func (j *Journal) AppendDispatchPhase(stepID, messageID, from, to, executor, imageDigest, phase string) error {
+	return j.Append(Event{
+		Kind:        KindDispatch,
+		StepID:      stepID,
+		MessageID:   messageID,
+		From:        from,
+		To:          to,
+		Executor:    executor,
+		ImageDigest: imageDigest,
+		Phase:       phase,
+	})
+}
+
+// AppendHostReasoning records the host-LLM reasoning step between the assemble
+// and package container invocations (F10-S1). inputFile and outputFile are the
+// relative names of the intermediate artefacts (prompt-bundle.json and
+// reasoning.json). durationMS is the wall-clock duration of the step in milliseconds.
+func (j *Journal) AppendHostReasoning(stepID, inputFile, outputFile string, durationMS int64) error {
+	return j.Append(Event{
+		Kind:       KindHostReasoning,
+		StepID:     stepID,
+		Input:      inputFile,
+		Output:     outputFile,
+		DurationMS: durationMS,
 	})
 }
 

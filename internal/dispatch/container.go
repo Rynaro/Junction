@@ -1,9 +1,18 @@
-// Package dispatch — ContainerExecutor implementation (S2.1, round 4).
+// Package dispatch — ContainerExecutor implementation (S2.1, round 4; F10-S1, round 6).
 //
 // ContainerExecutor is the primary Executor from F2 onward. It runs each
-// Eidolon in its own container via raw `docker run` (single-shot dispatch).
-// Multi-Eidolon TRANCE chains use the chain.go ChainExecutor which composes
-// multiple ContainerExecutor calls.
+// Eidolon in its own container via raw `docker run`.
+//
+// Round 6 (F10-S1): the single-invocation model is generalised to a two-phase
+// orchestration loop:
+//
+//  1. invoke(assemble)  — JUNCTION_PHASE=assemble; container writes prompt-bundle.json
+//  2. host-LLM reasoning step (injectable seam: ReasoningStep field)
+//  3. invoke(package)   — JUNCTION_PHASE=package; container writes *.envelope.json
+//
+// The docker run invocation line (flags + mounts) is UNCHANGED — JUNCTION_PHASE
+// rides the existing req.Env channel. What changed is the orchestration around
+// the invocation.
 //
 // Image resolution order (spec §5.9 / OQ-17):
 //  1. Env var JUNCTION_EIDOLON_IMAGE_<EIDOLON> (upper-cased slug, hyphens→underscores)
@@ -23,6 +32,9 @@ import (
 	"os/exec"
 	"path/filepath"
 	"strings"
+	"time"
+
+	"github.com/Rynaro/Junction/internal/trace"
 )
 
 // Sentinel errors for container-specific failures (spec §5.5 round 4).
@@ -61,9 +73,32 @@ func (realRunner) Run(ctx context.Context, env []string, name string, args ...st
 	return strings.TrimSpace(string(outB)), stderr, err
 }
 
+// ReasoningStepFunc is the injectable seam for the host-LLM reasoning step in
+// the two-phase ContainerExecutor orchestration (F10-S1, round 6).
+//
+// The function is called after the assemble container invocation completes.
+// It receives:
+//   - ctx: the request context (honours cancellation).
+//   - stepID: the step identifier, for logging.
+//   - inDir: the host path to the step's in/ bind-mount directory.
+//   - outDir: the host path to the step's out/ bind-mount directory.
+//
+// The assemble phase writes prompt-bundle.json to outDir. The function MUST
+// write reasoning.json into inDir before returning. Junction then runs the
+// package container invocation with the in/ directory containing reasoning.json.
+//
+// NG17: no real LLM call is made inside this codebase. In tests a canned
+// reasoning.json is written directly. In production the MCP stdio server
+// (junction mcp serve, §7.4) is the natural host — OQ-22 covers headless-CI.
+type ReasoningStepFunc func(ctx context.Context, stepID, inDir, outDir string) error
+
 // ContainerExecutor runs each Eidolon in its own container via `docker run`.
 // It implements the Executor interface from F1 and is the primary executor
 // from F2 onward. Use ShellExecutor (--no-container) as fallback.
+//
+// Round 6 (F10-S1): Execute now runs a two-phase orchestration loop
+// (assemble → host-LLM reasoning → package). The ReasoningStep field is the
+// injectable seam for the host-LLM step; tests supply a canned implementation.
 type ContainerExecutor struct {
 	// Runner is the docker CLI adapter. If nil, uses the real docker binary.
 	Runner CommandRunner
@@ -72,9 +107,26 @@ type ContainerExecutor struct {
 	// (e.g. "1.5.2"). Defaults to "latest" when empty.
 	EidolonVersion string
 
-	// ProbeDocker, when true, skips the daemon reachability probe. Useful in
-	// tests that don't have a real Docker daemon.
+	// SkipDaemonProbe, when true, skips the daemon reachability probe. Useful
+	// in tests that don't have a real Docker daemon.
 	SkipDaemonProbe bool
+
+	// ReasoningStep is the injectable host-LLM reasoning step between the
+	// assemble and package container invocations. If nil, a no-op pass-through
+	// is used (useful for legacy single-phase tests that pre-date F10-S1, and
+	// for environments where no reasoning provider is configured yet).
+	//
+	// Production callers (MCP server, §7.4) supply a real implementation that
+	// reads prompt-bundle.json and writes reasoning.json. Tests supply a canned
+	// function that copies a fixture reasoning.json. NG17 forbids any direct
+	// LLM API call here.
+	ReasoningStep ReasoningStepFunc
+
+	// Journal is an optional trace journal. When non-nil, the executor records
+	// per-phase dispatch events (kind="dispatch" with phase="assemble"|"package")
+	// and a host_reasoning event between the two phases. The caller is
+	// responsible for opening and closing the journal.
+	Journal *trace.Journal
 }
 
 // runner returns the configured runner or the production default.
@@ -85,7 +137,15 @@ func (c *ContainerExecutor) runner() CommandRunner {
 	return realRunner{}
 }
 
-// Execute dispatches req by running the resolved Eidolon image via docker run.
+// Execute dispatches req using the two-phase orchestration loop (F10-S1):
+//
+//  1. invoke(assemble) — container writes prompt-bundle.json to out/
+//  2. ReasoningStep    — host-LLM reads prompt-bundle.json, writes reasoning.json to in/
+//  3. invoke(package)  — container reads reasoning.json, writes *.envelope.json to out/
+//
+// The docker run invocation line (flags + mounts) is IDENTICAL in both phases.
+// JUNCTION_PHASE ("assemble" or "package") is injected via req.Env — the
+// channel that was already permitted before F10-S1.
 func (c *ContainerExecutor) Execute(ctx context.Context, req Request) (Result, error) {
 	if !c.SkipDaemonProbe {
 		if err := c.probeDaemon(ctx); err != nil {
@@ -129,45 +189,92 @@ func (c *ContainerExecutor) Execute(ctx context.Context, req Request) (Result, e
 		return Result{}, fmt.Errorf("container: abs out dir: %w", err)
 	}
 
-	dockerArgs := []string{
-		"run", "--rm",
-		"--network", "none",
-		"--read-only",
-		"--tmpfs", "/tmp",
-		"--cap-drop", "ALL",
-		"-v", absIn + ":/junction/io/in:ro",
-		"-v", absOut + ":/junction/io/out:rw",
-		"-e", "JUNCTION_THREAD_ID=" + req.ThreadID,
-		"-e", "JUNCTION_INPUT_ENVELOPE=" + containerEnvPath,
-		"-e", "ECL_THREAD_ID=" + req.ThreadID,
-		"-e", "ECL_INPUT_ENVELOPE=" + containerEnvPath,
-		"-e", "ECL_OUTPUT_DIR=/junction/io/out",
-		"-e", "JUNCTION_VERSION=" + junctionVersion(),
-	}
-
-	for _, e := range req.Env {
-		dockerArgs = append(dockerArgs, "-e", e)
-	}
-
-	dockerArgs = append(dockerArgs, image)
-
-	_, _, runErr := c.runner().Run(ctx, nil, "docker", dockerArgs...)
-
-	exitCode := 0
-	if runErr != nil {
-		var exitErr *exec.ExitError
-		if errors.As(runErr, &exitErr) {
-			exitCode = exitErr.ExitCode()
-		} else {
-			exitCode = 1
+	// buildDockerArgs constructs the docker run invocation for a given phase.
+	// The invocation line (flags + mounts) is UNCHANGED from S2.1; only
+	// JUNCTION_PHASE is added to the env entries — it rides req.Env just like
+	// any other caller-supplied env var.
+	buildDockerArgs := func(phase string, extraEnv []string) []string {
+		args := []string{
+			"run", "--rm",
+			"--network", "none",
+			"--read-only",
+			"--tmpfs", "/tmp",
+			"--cap-drop", "ALL",
+			"-v", absIn + ":/junction/io/in:ro",
+			"-v", absOut + ":/junction/io/out:rw",
+			"-e", "JUNCTION_THREAD_ID=" + req.ThreadID,
+			"-e", "JUNCTION_INPUT_ENVELOPE=" + containerEnvPath,
+			"-e", "ECL_THREAD_ID=" + req.ThreadID,
+			"-e", "ECL_INPUT_ENVELOPE=" + containerEnvPath,
+			"-e", "ECL_OUTPUT_DIR=/junction/io/out",
+			"-e", "JUNCTION_VERSION=" + junctionVersion(),
+			"-e", "JUNCTION_PHASE=" + phase,
 		}
+		for _, e := range extraEnv {
+			args = append(args, "-e", e)
+		}
+		args = append(args, image)
+		return args
+	}
+
+	// ── Phase 1: assemble ────────────────────────────────────────────────────
+	assembleArgs := buildDockerArgs("assemble", req.Env)
+
+	if c.Journal != nil {
+		_ = c.Journal.AppendDispatchPhase(req.StepID, "", "", "", "container", "", "assemble")
+	}
+
+	_, _, assembleErr := c.runner().Run(ctx, nil, "docker", assembleArgs...)
+	if assembleErr != nil {
+		exitCode := exitCodeFrom(assembleErr)
 		outEnv, _ := findOutputEnvelope(req.OutputDir)
 		return Result{
 			StepID:             req.StepID,
 			ExitCode:           exitCode,
 			OutputEnvelopePath: outEnv,
 			ImageRef:           image,
-		}, fmt.Errorf("%w: exit %d", ErrDispatchFailed, exitCode)
+		}, fmt.Errorf("%w: assemble phase exit %d", ErrDispatchFailed, exitCode)
+	}
+
+	// ── Host-LLM reasoning step ──────────────────────────────────────────────
+	// This is the injectable seam (NG17: no LLM call here). Tests supply a
+	// canned ReasoningStepFunc; production uses the MCP server (OQ-22).
+	reasoningStep := c.ReasoningStep
+	if reasoningStep == nil {
+		reasoningStep = noopReasoningStep
+	}
+
+	reasoningStart := time.Now()
+	if err := reasoningStep(ctx, req.StepID, absIn, absOut); err != nil {
+		return Result{
+			StepID:   req.StepID,
+			ExitCode: 1,
+			ImageRef: image,
+		}, fmt.Errorf("container: host-LLM reasoning step failed: %w", err)
+	}
+	reasoningDurationMS := time.Since(reasoningStart).Milliseconds()
+
+	if c.Journal != nil {
+		_ = c.Journal.AppendHostReasoning(req.StepID, "prompt-bundle.json", "reasoning.json", reasoningDurationMS)
+	}
+
+	// ── Phase 2: package ─────────────────────────────────────────────────────
+	packageArgs := buildDockerArgs("package", req.Env)
+
+	if c.Journal != nil {
+		_ = c.Journal.AppendDispatchPhase(req.StepID, "", "", "", "container", "", "package")
+	}
+
+	_, _, packageErr := c.runner().Run(ctx, nil, "docker", packageArgs...)
+	if packageErr != nil {
+		exitCode := exitCodeFrom(packageErr)
+		outEnv, _ := findOutputEnvelope(req.OutputDir)
+		return Result{
+			StepID:             req.StepID,
+			ExitCode:           exitCode,
+			OutputEnvelopePath: outEnv,
+			ImageRef:           image,
+		}, fmt.Errorf("%w: package phase exit %d", ErrDispatchFailed, exitCode)
 	}
 
 	// Fetch the image digest after a successful run for the trace record.
@@ -182,6 +289,24 @@ func (c *ContainerExecutor) Execute(ctx context.Context, req Request) (Result, e
 		ImageRef:           image,
 		ImageDigest:        imageDigest,
 	}, nil
+}
+
+// exitCodeFrom extracts the process exit code from a command error, or returns
+// 1 if the error is not an *exec.ExitError.
+func exitCodeFrom(err error) int {
+	var exitErr *exec.ExitError
+	if errors.As(err, &exitErr) {
+		return exitErr.ExitCode()
+	}
+	return 1
+}
+
+// noopReasoningStep is the default ReasoningStepFunc used when ReasoningStep
+// is nil. It does nothing and returns nil — appropriate for legacy single-phase
+// tests and environments without a reasoning provider configured yet.
+// In production this is replaced by the MCP stdio server's reasoning hook.
+func noopReasoningStep(_ context.Context, _, _, _ string) error {
+	return nil
 }
 
 // probeDaemon checks that the Docker daemon is reachable.
