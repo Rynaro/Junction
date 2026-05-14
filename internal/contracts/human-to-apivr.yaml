@@ -11,11 +11,21 @@ performatives_allowed:
   - ESCALATE
 artifacts:
   - kind: prompt
-    schema_ref: ../schemas/per-eidolon/prompt.v1.json
+    schema_ref: ../schemas/per-eidolon/_base-profile.v1.json
+    evidence_anchor_required: false
+context_delta:
+  token_budget_max: 4000
+  required_handles: []
 trust_level: standard
 notes: >
-  A human originator may REQUEST apivr to implement a feature, INFORM it with
-  additional context, CRITIQUE a prior implementation report, REFUSE a proposed
-  artefact, ACKNOWLEDGE a proposed artefact, or ESCALATE a blocker.
-  Human originators MUST NOT emit PROPOSE, DECIDE, DELEGATE, or RESUME
-  (spec §5.7, F-HUMAN-EDGE).
+  Human-origin edge into APIVR-Δ. The originator may REQUEST APIVR-Δ to
+  implement a feature or run the A→P→I→V→Δ cycle on a spec, INFORM it
+  with additional context (a test case to anchor against, a constraint
+  surfaced after planning), CRITIQUE a prior implementation report or a
+  proposed plan during the Plan phase, REFUSE a proposed artefact,
+  ACKNOWLEDGE a completion report to close a pause-on gate, or ESCALATE
+  a blocker (e.g. "this should route to VIGIL"). Human originators MUST
+  NOT emit PROPOSE, DECIDE, DELEGATE, or RESUME — see human-to-atlas.yaml
+  for per-performative rationale (Junction spec §5.7). Authored to
+  support Junction's F-HUMAN-EDGE; additive to ECL v1.0 with no
+  spec-version bump.
