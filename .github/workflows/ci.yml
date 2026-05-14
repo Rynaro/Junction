@@ -26,6 +26,28 @@ jobs:
       - name: make check
         run: make check
 
+  contracts-drift:
+    name: contracts drift check
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Build dev image
+        run: docker compose build dev
+
+      - name: Sync contracts from upstream pin
+        run: make sync-contracts
+
+      - name: Fail on drift
+        run: |
+          if ! git diff --exit-code -- internal/contracts/; then
+            echo "internal/contracts/ is out of sync with internal/contracts/.eclref. Run \`make sync-contracts\` and commit the result."
+            exit 1
+          fi
+
   build:
     name: build release binary
     runs-on: ubuntu-latest
