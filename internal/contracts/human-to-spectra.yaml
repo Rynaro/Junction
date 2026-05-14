@@ -11,11 +11,21 @@ performatives_allowed:
   - ESCALATE
 artifacts:
   - kind: prompt
-    schema_ref: ../schemas/per-eidolon/prompt.v1.json
+    schema_ref: ../schemas/per-eidolon/_base-profile.v1.json
+    evidence_anchor_required: false
+context_delta:
+  token_budget_max: 4000
+  required_handles: []
 trust_level: standard
 notes: >
-  A human originator may REQUEST spectra to author a spec, INFORM it with
-  additional context, CRITIQUE a prior spec for revision, REFUSE a proposed
-  spec, ACKNOWLEDGE a proposed artefact, or ESCALATE a blocker.
-  Human originators MUST NOT emit PROPOSE, DECIDE, DELEGATE, or RESUME
-  (spec §5.7, F-HUMAN-EDGE).
+  Human-origin edge into SPECTRA. The originator may REQUEST SPECTRA to
+  author a decision-ready specification, INFORM it with additional
+  context (a reference doc, an updated requirement, a fact discovered
+  mid-cycle), CRITIQUE a prior spec for revision (tightening a gate,
+  reframing a story), REFUSE a proposed spec, ACKNOWLEDGE a spec to
+  close a pause-on gate before APIVR-Δ proceeds, or ESCALATE a blocker
+  outside the current chain (e.g. "this needs ATLAS first"). Human
+  originators MUST NOT emit PROPOSE, DECIDE, DELEGATE, or RESUME — see
+  human-to-atlas.yaml for per-performative rationale (Junction spec
+  §5.7). Authored to support Junction's F-HUMAN-EDGE; additive to ECL
+  v1.0 with no spec-version bump.

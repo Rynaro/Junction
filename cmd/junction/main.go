@@ -255,8 +255,12 @@ func loadAndVerifyEnvelope(envelopePath, contractsDir, enforce string) (*envelop
 }
 
 // buildRegistry builds a contract registry from the override dir (if
-// provided) or falls back to the embedded contracts.
+// provided), the JUNCTION_CONTRACTS_DIR environment variable (if set), or
+// falls back to the embedded contracts.
 func buildRegistry(contractsDir string) (*contract.Registry, []error) {
+	if contractsDir == "" {
+		contractsDir = os.Getenv("JUNCTION_CONTRACTS_DIR")
+	}
 	if contractsDir != "" {
 		return contract.NewRegistry(contractsDir)
 	}

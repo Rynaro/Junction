@@ -11,12 +11,23 @@ performatives_allowed:
   - ESCALATE
 artifacts:
   - kind: prompt
-    schema_ref: ../schemas/per-eidolon/prompt.v1.json
+    schema_ref: ../schemas/per-eidolon/_base-profile.v1.json
+    evidence_anchor_required: false
+context_delta:
+  token_budget_max: 4000
+  required_handles: []
 trust_level: standard
 notes: >
-  A human originator may REQUEST forge to perform a quality gate or RFC
-  review, INFORM it with additional context, CRITIQUE a prior decision,
-  REFUSE a proposed decision, ACKNOWLEDGE a proposed artefact, or ESCALATE a
-  blocker.
-  Human originators MUST NOT emit PROPOSE, DECIDE, DELEGATE, or RESUME
-  (spec §5.7, F-HUMAN-EDGE).
+  Human-origin edge into FORGE. The originator may REQUEST FORGE to
+  perform a quality gate, RFC review, or arbitrate a trade-off, INFORM
+  it with additional context (a counterfactual, an external constraint
+  not surfaced in the originating chain), CRITIQUE a prior reasoning
+  report, REFUSE a proposed decision (FORGE re-runs with the human's
+  REFUSE recorded in the trace), ACKNOWLEDGE a reasoning report, or
+  ESCALATE a blocker. Note that FORGE is itself the evaluator role
+  emitting DECIDE — the human's role here is to feed inputs and accept
+  or reject outputs, never to short-circuit FORGE's own DECIDE. Human
+  originators MUST NOT emit PROPOSE, DECIDE, DELEGATE, or RESUME — see
+  human-to-atlas.yaml for per-performative rationale (Junction spec
+  §5.7). Authored to support Junction's F-HUMAN-EDGE; additive to ECL
+  v1.0 with no spec-version bump.

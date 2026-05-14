@@ -22,7 +22,7 @@ export HOST_UID HOST_GID
 VERSION ?= 0.0.0-dev
 IMAGE   ?= junction:local
 
-.PHONY: help dev shell check test test-race lint fmt vet tidy build image clean doctor cache-dirs demo examples
+.PHONY: help dev shell check test test-race lint fmt vet tidy sync-contracts build image clean doctor cache-dirs demo examples
 
 # Pre-create bind-mount source dirs so Docker (running as root on CI)
 # doesn't create them root-owned before the container can write to them.
@@ -75,6 +75,23 @@ vet: cache-dirs
 
 tidy: cache-dirs
 	$(COMPOSE) run --rm dev go mod tidy
+
+# sync-contracts: fetch the pinned eidolons-ecl commit and overwrite
+# internal/contracts/*.yaml wholesale. Preserves embed.go, .eclref,
+# VERSION, and any _test.go files. Runs inside the dev container.
+sync-contracts: cache-dirs
+	$(COMPOSE) run --rm dev sh -c '\
+	  set -e; \
+	  REF=$$(cat internal/contracts/.eclref | tr -d "[:space:]"); \
+	  TMPDIR=$$(mktemp -d); \
+	  git clone --filter=blob:none https://github.com/Rynaro/eidolons-ecl.git "$$TMPDIR/ecl"; \
+	  git -C "$$TMPDIR/ecl" checkout "$$REF"; \
+	  cp "$$TMPDIR/ecl/contracts/"*.yaml internal/contracts/; \
+	  DATE=$$(date +%Y-%m-%d); \
+	  printf "eidolons-ecl %s (%s) synced %s\n" "$$REF" "$$REF" "$$DATE" > internal/contracts/VERSION; \
+	  rm -rf "$$TMPDIR"; \
+	  echo "sync-contracts: done (eidolons-ecl@$$REF)"; \
+	'
 
 # Release build runs in the same dev image (CGO disabled, trimpath).
 # Output lands at ./bin/junction on the host via the bind mount.

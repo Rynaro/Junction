@@ -11,11 +11,23 @@ performatives_allowed:
   - ESCALATE
 artifacts:
   - kind: prompt
-    schema_ref: ../schemas/per-eidolon/prompt.v1.json
+    schema_ref: ../schemas/per-eidolon/_base-profile.v1.json
+    evidence_anchor_required: false
+context_delta:
+  token_budget_max: 4000
+  required_handles: []
 trust_level: standard
 notes: >
-  A human originator may REQUEST atlas to produce a scout-report, INFORM it
-  with additional context, CRITIQUE a prior scout-report for revision, REFUSE
-  an atlas proposal, ACKNOWLEDGE a proposed artefact, or ESCALATE a blocker.
-  Human originators MUST NOT emit PROPOSE, DECIDE, DELEGATE, or RESUME
-  (spec §5.7, F-HUMAN-EDGE).
+  Human-origin edge into ATLAS. The originator may REQUEST ATLAS to map a
+  surface or produce a scout-report, INFORM it with additional context
+  (e.g. "the dispatch lives in cli/src/"), CRITIQUE a prior scout-report
+  for revision, REFUSE a proposed scout target or framing, ACKNOWLEDGE a
+  scout-report to close a pause-on gate, or ESCALATE a blocker outside
+  the current chain. Human originators MUST NOT emit PROPOSE, DECIDE,
+  DELEGATE, or RESUME (rationale per performative: PROPOSE collapses to
+  REQUEST; DECIDE is reserved for an evaluator Eidolon — FORGE — so the
+  audit trail names the deciding role; DELEGATE is reserved for
+  Eidolon-origin task binding; RESUME is emitted by the harness itself
+  when re-entering a trace, not by the human). Authored to support
+  Junction's F-HUMAN-EDGE per Junction spec §5.7; additive to ECL v1.0
+  with no spec-version bump.
