@@ -15,3 +15,11 @@ set -e
 echo "[pre-push] running make check …"
 make check
 echo "[pre-push] check passed."
+
+# make check already depends on lint-examples (see Makefile), so the static
+# gate ran as part of check above. The explicit call below is belt-and-suspenders:
+# it ensures the gate is visible in the hook and survives any future refactor
+# that might decouple check from lint-examples.
+echo "[pre-push] running make lint-examples …"
+make lint-examples
+echo "[pre-push] lint-examples passed."

@@ -24,6 +24,15 @@ ARG GOLANGCI_LINT_VERSION=v1.62.2
 RUN curl -sSfL https://raw.githubusercontent.com/golangci/golangci-lint/master/install.sh \
     | sh -s -- -b /usr/local/bin "${GOLANGCI_LINT_VERSION}"
 
+# shellcheck: shell script static analysis — used by `make lint-examples`.
+# yq (mikefarah): YAML parse/eval — used by `make lint-examples`.
+ARG YQ_VERSION=v4.44.1
+RUN apt-get update -qq && apt-get install -y --no-install-recommends shellcheck \
+    && rm -rf /var/lib/apt/lists/* \
+    && curl -sSfL "https://github.com/mikefarah/yq/releases/download/${YQ_VERSION}/yq_linux_amd64" \
+       -o /usr/local/bin/yq \
+    && chmod +x /usr/local/bin/yq
+
 # `$HOME` must be writable for go-build cache + golangci-lint cache.
 # Memory note (feedback_home_eacces_signature): when the container UID
 # differs from the bind-mount UID, baked $HOME becomes unreadable. We
