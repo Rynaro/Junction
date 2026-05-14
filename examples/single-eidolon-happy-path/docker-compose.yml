@@ -1,0 +1,37 @@
+# single-eidolon-happy-path — stub Eidolon container for the example.
+#
+# The stub-atlas service simulates an ATLAS Eidolon that reads its input
+# envelope and writes a canned response envelope to the output directory.
+# It uses alpine:3.20 with a shell script entry point.
+
+services:
+  stub-atlas:
+    image: alpine:3.20
+    read_only: true
+    network_mode: none
+    tmpfs:
+      - /tmp
+    volumes:
+      - type: bind
+        source: ${JUNCTION_IN_DIR:?JUNCTION_IN_DIR not set}
+        target: /junction/io/in
+        read_only: true
+      - type: bind
+        source: ${JUNCTION_OUT_DIR:?JUNCTION_OUT_DIR not set}
+        target: /junction/io/out
+    environment:
+      JUNCTION_THREAD_ID: ${JUNCTION_THREAD_ID:-example-thread-001}
+      JUNCTION_INPUT_ENVELOPE: ${JUNCTION_INPUT_ENVELOPE:-/junction/io/in/input.envelope.json}
+      ECL_OUTPUT_DIR: /junction/io/out
+    entrypoint:
+      - /bin/sh
+      - -c
+      - |
+        set -e
+        echo "[stub-atlas] reading input from $$JUNCTION_INPUT_ENVELOPE"
+        THREAD_ID="$$JUNCTION_THREAD_ID"
+        MSG_ID="01905e70-b0b0-7000-8000-000000000002"
+        OUT_FILE="$$ECL_OUTPUT_DIR/scout-report.md.envelope.json"
+        printf '{"envelope_version":"2.0","message_id":"%s","thread_id":"%s","parent_id":"01905e70-b0a0-7000-8000-000000000001","from":{"eidolon":"atlas","version":"1.5.2"},"to":{"eidolon":"human","version":"n/a"},"performative":"INFORM","edge_origin":"roster","objective":"Scout complete.","artifact":{"kind":"scout-report","schema_version":"1.0","path":"scout-report.md","sha256":"e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855","size_bytes":0},"context_delta":{"token_budget":4000,"tokens_used":120,"input_handles":[],"summary":"Stub scout-report emitted by the example stub Eidolon."},"constraints":{"trust_level":"standard"},"confidence":1.0,"integrity":{"method":"sha256","value":"e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"},"trace":{"ts":"2026-05-13T00:00:00Z","host":"junction-example","model":"stub","tier":"standard"}}' \
+          "$$MSG_ID" "$$THREAD_ID" > "$$OUT_FILE"
+        echo "[stub-atlas] wrote $$OUT_FILE"

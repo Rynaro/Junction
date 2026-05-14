@@ -22,7 +22,7 @@ export HOST_UID HOST_GID
 VERSION ?= 0.0.0-dev
 IMAGE   ?= junction:local
 
-.PHONY: help dev shell test test-race lint fmt vet tidy build image clean doctor cache-dirs
+.PHONY: help dev shell check test test-race lint fmt vet tidy build image clean doctor cache-dirs demo examples
 
 # Pre-create bind-mount source dirs so Docker (running as root on CI)
 # doesn't create them root-owned before the container can write to them.
@@ -32,6 +32,7 @@ cache-dirs:
 help:
 	@echo "Junction — developer entry points"
 	@echo
+	@echo "  make check     go vet + go test -race + golangci-lint (single source of truth for CI)"
 	@echo "  make dev       Open an interactive shell in the dev container"
 	@echo "  make test      Run go test ./... inside the dev container"
 	@echo "  make test-race Run go test -race ./... inside the dev container"
@@ -42,6 +43,8 @@ help:
 	@echo "  make build     Build the release static binary into ./bin/junction"
 	@echo "  make image     Build the release container image ($(IMAGE))"
 	@echo "  make doctor    Print container / Docker / Go versions"
+	@echo "  make demo      Run examples/single-eidolon-happy-path/run.sh"
+	@echo "  make examples  Run all examples/<scenario>/run.sh"
 	@echo "  make clean     Remove build output (does not touch caches)"
 
 dev: shell
@@ -49,11 +52,17 @@ dev: shell
 shell: cache-dirs
 	$(COMPOSE) run --rm dev bash
 
+# check: single source of truth for lint + test + vet — matches CI verbatim.
+# Pre-push hook (.githooks/pre-push) invokes this target.
+# CI (.github/workflows/ci.yml) invokes this target in the check job.
+check: cache-dirs
+	$(COMPOSE) run --rm -e CGO_ENABLED=1 dev sh -c "go vet ./... && go test -race ./... && golangci-lint run ./..."
+
 test: cache-dirs
 	$(COMPOSE) run --rm dev go test ./...
 
 test-race: cache-dirs
-	$(COMPOSE) run --rm dev go test -race ./...
+	$(COMPOSE) run --rm -e CGO_ENABLED=1 dev go test -race ./...
 
 lint: cache-dirs
 	$(COMPOSE) run --rm dev golangci-lint run ./...
@@ -94,6 +103,15 @@ doctor: cache-dirs
 	@$(COMPOSE) version --short 2>/dev/null | sed 's/^/  /' || echo "  not available"
 	@echo "container go:"
 	@$(COMPOSE) run --rm dev go version 2>/dev/null | sed 's/^/  /' || echo "  dev image not built yet"
+
+demo:
+	bash examples/single-eidolon-happy-path/run.sh
+
+examples:
+	@for d in examples/*/; do \
+	    echo "==> $$d"; \
+	    bash "$$d/run.sh" || exit 1; \
+	done
 
 clean:
 	rm -rf bin dist

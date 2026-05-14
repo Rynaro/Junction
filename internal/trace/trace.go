@@ -62,8 +62,10 @@ type Event struct {
 	PerformOK   *bool  `json:"perform_ok,omitempty"`
 
 	// Dispatch context — present on dispatch / exit events.
-	StepID   string `json:"step_id,omitempty"`
-	ExitCode *int   `json:"exit_code,omitempty"`
+	StepID      string `json:"step_id,omitempty"`
+	ExitCode    *int   `json:"exit_code,omitempty"`
+	Executor    string `json:"executor,omitempty"`     // "shell" | "container" (spec §5.4 round 4)
+	ImageDigest string `json:"image_digest,omitempty"` // populated when executor == "container"
 
 	// Error detail — present on error / refuse / escalate events.
 	Error string `json:"error,omitempty"`
@@ -198,13 +200,17 @@ func (j *Journal) AppendVerify(messageID string, schemaOK, integrityOK, edgeOK, 
 }
 
 // AppendDispatch records that an Eidolon was dispatched for a step.
-func (j *Journal) AppendDispatch(stepID, messageID, from, to string) error {
+// executor is "shell" or "container"; imageDigest is the container image
+// digest when executor == "container" (empty string for shell dispatches).
+func (j *Journal) AppendDispatch(stepID, messageID, from, to, executor, imageDigest string) error {
 	return j.Append(Event{
-		Kind:      KindDispatch,
-		StepID:    stepID,
-		MessageID: messageID,
-		From:      from,
-		To:        to,
+		Kind:        KindDispatch,
+		StepID:      stepID,
+		MessageID:   messageID,
+		From:        from,
+		To:          to,
+		Executor:    executor,
+		ImageDigest: imageDigest,
 	})
 }
 
