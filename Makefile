@@ -93,7 +93,7 @@ lint-examples:
 	    \
 	    echo "==> lint-examples: $$scenario — yq parse"; \
 	    $(COMPOSE) run --rm dev sh -c \
-	        'rc=0; for f in /workspace/'"$$d"'docker-compose*.yml /workspace/'"$$d"'compose*.yml; do [ -f "$f" ] || continue; echo "  yq: $f"; yq eval "." "$f" > /dev/null || rc=1; done; exit $rc' \
+	        'rc=0; for f in /workspace/'"$$d"'docker-compose*.yml /workspace/'"$$d"'compose*.yml; do [ -f "$$f" ] || continue; echo "  yq: $$f"; yq eval "." "$$f" > /dev/null || rc=1; done; exit $$rc' \
 	    || { echo "FAIL: $$scenario yq parse failed"; fail=1; }; \
 	    \
 	    echo "==> lint-examples: $$scenario — compose config"; \
@@ -120,7 +120,7 @@ lint-examples:
 	    \
 	    echo "==> lint-examples: $$scenario — shellcheck"; \
 	    $(COMPOSE) run --rm dev sh -c \
-	        'rc=0; for f in /workspace/'"$$d"'*.sh; do [ -f "$f" ] || continue; shellcheck -x -S error "$f" || rc=1; done; exit $rc' \
+	        'rc=0; for f in /workspace/'"$$d"'*.sh; do [ -f "$$f" ] || continue; shellcheck -x -S error "$$f" || rc=1; done; exit $$rc' \
 	    || { echo "FAIL: $$scenario shellcheck failed"; fail=1; }; \
 	\
 	done; \
