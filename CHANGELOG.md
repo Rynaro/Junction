@@ -17,6 +17,10 @@ targets — see `README.md` and the spec at
   L3/L4 remain the semantic gate. Resolves OQ-23 Friction-5 from the v0.1.0
   README walk. `.eclref` stays pinned to v1.0; this is a v1.0-and-v2.0-tolerant
   reader posture, not a v2.0-native upgrade.
+- Container resolver no longer falls back to `:latest` for missing GHCR images;
+  failures name the pinned `to.version`, the full image ref, and the
+  `JUNCTION_EIDOLON_IMAGE_<NAME>` override env-var. Resolves Friction-4 from
+  the v0.1.0 README walk.
 
 ### Fixed
 

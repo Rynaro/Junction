@@ -214,6 +214,132 @@ func TestContainerExecutor_ImagePullFailed_Exit71(t *testing.T) {
 	}
 }
 
+// GIVEN docker pull fails (image not available)
+// WHEN Execute is called with a specific EidolonVersion
+// THEN the error message contains all four required pieces and does NOT
+// contain the string ":latest":
+//   (a) the exact to.version requested,
+//   (b) the full image ref ghcr.io/rynaro/<eidolon>:<to.version>,
+//   (c) the override env-var name JUNCTION_EIDOLON_IMAGE_<NAME>,
+//   (d) the OQ-17 / v0.2 deferral hint.
+func TestContainerExecutor_ImagePullFailed_ActionableError(t *testing.T) {
+	base := t.TempDir()
+	inDir := filepath.Join(base, "in")
+	outDir := filepath.Join(base, "out")
+	if err := os.MkdirAll(inDir, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	envPath := writeFixtureEnvelope(t, inDir)
+
+	const wantVersion = "1.5.3"
+	const wantEidolon = "atlas"
+
+	stub := &dispatch.ContainerExecutor{
+		Runner: &stubRunner{calls: []stubCall{
+			{match: "pull", stdout: "", stderr: "manifest unknown", err: errors.New("exit status 1")},
+		}},
+		EidolonVersion:  wantVersion,
+		SkipDaemonProbe: true,
+	}
+
+	req := dispatch.Request{
+		StepID:       "S0",
+		Eidolon:      wantEidolon,
+		EnvelopePath: envPath,
+		ThreadID:     "thread-actionable-error",
+		OutputDir:    outDir,
+	}
+
+	_, err := stub.Execute(context.Background(), req)
+	if err == nil {
+		t.Fatal("Execute with pull failure = nil, want ErrImageNotAvailable")
+	}
+	if !errors.Is(err, dispatch.ErrImageNotAvailable) {
+		t.Errorf("error wrapping = %v, want ErrImageNotAvailable (exit 71)", err)
+	}
+
+	msg := err.Error()
+
+	// (a) exact to.version requested
+	if !containsStr(msg, wantVersion) {
+		t.Errorf("error message does not contain version %q: %s", wantVersion, msg)
+	}
+
+	// (b) full image ref
+	wantRef := "ghcr.io/rynaro/" + wantEidolon + ":" + wantVersion
+	if !containsStr(msg, wantRef) {
+		t.Errorf("error message does not contain image ref %q: %s", wantRef, msg)
+	}
+
+	// (c) override env-var
+	wantEnvVar := "JUNCTION_EIDOLON_IMAGE_ATLAS"
+	if !containsStr(msg, wantEnvVar) {
+		t.Errorf("error message does not contain env-var %q: %s", wantEnvVar, msg)
+	}
+
+	// (d) OQ-17 / v0.2 deferral hint
+	if !containsStr(msg, "OQ-17") {
+		t.Errorf("error message does not contain OQ-17 hint: %s", msg)
+	}
+	if !containsStr(msg, "v0.2") {
+		t.Errorf("error message does not contain v0.2 deferral hint: %s", msg)
+	}
+
+	// must NOT contain ":latest"
+	if containsStr(msg, ":latest") {
+		t.Errorf("error message must NOT contain \":latest\" but does: %s", msg)
+	}
+}
+
+// GIVEN EidolonVersion is empty (not set by the plan)
+// WHEN Execute is called
+// THEN the error is ErrImageNotAvailable, names the eidolon and the override
+// env-var, and does NOT contain ":latest".
+func TestContainerExecutor_EmptyVersion_NoLatestFallback(t *testing.T) {
+	base := t.TempDir()
+	inDir := filepath.Join(base, "in")
+	outDir := filepath.Join(base, "out")
+	if err := os.MkdirAll(inDir, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	envPath := writeFixtureEnvelope(t, inDir)
+
+	// EidolonVersion intentionally left empty — no ":latest" fallback allowed.
+	exec := &dispatch.ContainerExecutor{
+		Runner:          &stubRunner{},
+		EidolonVersion:  "",
+		SkipDaemonProbe: true,
+	}
+
+	req := dispatch.Request{
+		StepID:       "S0",
+		Eidolon:      "spectra",
+		EnvelopePath: envPath,
+		ThreadID:     "thread-empty-version",
+		OutputDir:    outDir,
+	}
+
+	_, err := exec.Execute(context.Background(), req)
+	if err == nil {
+		t.Fatal("Execute with empty EidolonVersion = nil, want ErrImageNotAvailable")
+	}
+	if !errors.Is(err, dispatch.ErrImageNotAvailable) {
+		t.Errorf("error = %v, want ErrImageNotAvailable (exit 71)", err)
+	}
+
+	msg := err.Error()
+
+	// Must name the override env-var
+	if !containsStr(msg, "JUNCTION_EIDOLON_IMAGE_SPECTRA") {
+		t.Errorf("error message does not contain env-var JUNCTION_EIDOLON_IMAGE_SPECTRA: %s", msg)
+	}
+
+	// Must NOT contain ":latest"
+	if containsStr(msg, ":latest") {
+		t.Errorf("error message must NOT contain \":latest\" but does: %s", msg)
+	}
+}
+
 // GIVEN Docker daemon is unreachable (SkipDaemonProbe=false)
 // WHEN Execute is called
 // THEN Execute returns ErrDockerUnreachable (maps to exit 72).
