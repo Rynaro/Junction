@@ -20,8 +20,8 @@
   "properties": {
     "envelope_version": {
       "type": "string",
-      "pattern": "^1\\.0(\\.\\d+)?$",
-      "description": "ECL spec version this envelope conforms to. ECL v1.0 §1.1.1."
+      "pattern": "^[12]\\.0(\\.\\d+)?$",
+      "description": "ECL spec version this envelope conforms to. Accepts v1.0 and v2.0 per ECL §7.3 compat window. ECL v1.0 §1.1.1."
     },
     "message_id": {
       "type": "string",

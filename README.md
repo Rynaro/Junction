@@ -170,6 +170,14 @@ The two-phase execution model: invoke(assemble) → host LLM reasons → invoke(
 - **ECL** — Eidolons Communication Layer (envelopes, performatives, contracts) at https://github.com/Rynaro/eidolons-ecl
 - **Eidolons nexus** — roster, harness CLI, and methodology cortex at https://github.com/Rynaro/eidolons
 
+Junction is a **v1.0-and-v2.0-tolerant reader** during the ECL §7.3 compatibility
+window (through 2027-05-13). The L1 schema accepts `envelope_version` values matching
+`^[12]\.0(\.\d+)?$`; L3/L4 remain the semantic gate for edge and performative
+enforcement. `.eclref` is pinned to v1.0 contracts (commit
+`5d0aaff8f26e0ed5e4b6efa982757ea9ef97891b`). This is not a v2.0-native upgrade: the
+performative set remains closed at 10, no new L3 edges are active, and ISE fields are
+optional/additive — verified against the v2.0 spec on 2026-05-15.
+
 ## License
 
 Apache-2.0. See `LICENSE`.
