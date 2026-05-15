@@ -27,8 +27,9 @@ type ExecutorOptions struct {
 	CacheDir string
 
 	// EidolonVersion is passed to the executor when building image/cache paths.
-	// If empty, "latest" is used by ContainerExecutor and cache lookup is
-	// skipped by ShellExecutor.
+	// ContainerExecutor requires a non-empty value (the plan step's to.version);
+	// it will error rather than fall back to ":latest". Cache lookup is skipped
+	// by ShellExecutor when empty.
 	EidolonVersion string
 }
 

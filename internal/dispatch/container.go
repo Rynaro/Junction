@@ -104,7 +104,8 @@ type ContainerExecutor struct {
 	Runner CommandRunner
 
 	// EidolonVersion is the version tag used when building the image reference
-	// (e.g. "1.5.2"). Defaults to "latest" when empty.
+	// (e.g. "1.5.2"). Must be set; an empty value causes resolveImage to return
+	// an error immediately rather than falling back to ":latest".
 	EidolonVersion string
 
 	// SkipDaemonProbe, when true, skips the daemon reachability probe. Useful
@@ -322,10 +323,17 @@ func (c *ContainerExecutor) probeDaemon(ctx context.Context) error {
 //
 // Priority:
 //  1. JUNCTION_EIDOLON_IMAGE_<UPPER_EIDOLON> env var.
-//  2. ghcr.io/rynaro/<lowercased-eidolon>:<version>.
+//  2. ghcr.io/rynaro/<lowercased-eidolon>:<version> where version comes from
+//     c.EidolonVersion (which in turn comes from the plan step's to.version).
 //
-// If the resolved image is not pullable, returns ErrImageNotAvailable (exit 71).
-// Build-from-source fallback is deferred to v0.2 (OQ-17).
+// If EidolonVersion is empty, resolveImage returns ErrImageNotAvailable
+// immediately — there is no ":latest" fallback (images are SemVer-only by
+// registry policy).
+//
+// If the resolved image is not pullable, returns ErrImageNotAvailable (exit 71)
+// with an actionable message naming the pinned version, the full image ref,
+// and the override env-var.  Build-from-source fallback is deferred to v0.2
+// (OQ-17).
 func (c *ContainerExecutor) resolveImage(ctx context.Context, eidolon string) (string, error) {
 	// 1. Env override.
 	envKey := "JUNCTION_EIDOLON_IMAGE_" + toEnvSlug(eidolon)
@@ -333,20 +341,25 @@ func (c *ContainerExecutor) resolveImage(ctx context.Context, eidolon string) (s
 		return img, nil
 	}
 
-	// 2. Default GHCR image.
+	// 2. Pinned GHCR image — version must come from the plan (to.version).
+	// No ":latest" fallback: the registry publishes SemVer tags only, and a
+	// floating tag would defeat the reproducibility guarantee.
 	version := c.EidolonVersion
 	if version == "" {
-		version = "latest"
+		return "", fmt.Errorf("%w: eidolon %q has no version set in the plan (to.version is empty). "+
+			"Set JUNCTION_EIDOLON_IMAGE_%s to override. "+
+			"Build-from-source fallback (OQ-17) is deferred to v0.2.",
+			ErrImageNotAvailable, eidolon, toEnvSlug(eidolon))
 	}
 	image := "ghcr.io/rynaro/" + strings.ToLower(eidolon) + ":" + version
 
 	// Try pulling the image to verify availability.
 	_, _, err := c.runner().Run(ctx, nil, "docker", "pull", image)
 	if err != nil {
-		return "", fmt.Errorf("%w: image %q — %v. "+
+		return "", fmt.Errorf("%w: eidolon %q version %q — image %q not available — %v. "+
 			"Set JUNCTION_EIDOLON_IMAGE_%s to override. "+
 			"Build-from-source fallback (OQ-17) is deferred to v0.2.",
-			ErrImageNotAvailable, image, err, toEnvSlug(eidolon))
+			ErrImageNotAvailable, eidolon, version, image, err, toEnvSlug(eidolon))
 	}
 
 	return image, nil
