@@ -1,0 +1,55 @@
+name: fixture-version-drift
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  drift:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install yq
+        run: |
+          sudo wget -qO /usr/local/bin/yq https://github.com/mikefarah/yq/releases/latest/download/yq_linux_amd64
+          sudo chmod +x /usr/local/bin/yq
+
+      - name: Fetch upstream roster
+        run: |
+          curl -fsSL https://raw.githubusercontent.com/Rynaro/eidolons/main/roster/index.yaml \
+            -o /tmp/roster.yaml
+
+      - name: Compute latest version set
+        run: |
+          yq eval '.eidolons[].versions.latest' /tmp/roster.yaml | sort -u > /tmp/latest-versions.txt
+          echo "Latest versions in roster:"
+          cat /tmp/latest-versions.txt
+
+      - name: Check fixture versions
+        run: |
+          set -euo pipefail
+          # Use grep -oE to extract only the version literal (handles multiple
+          # "version":"..." pairs on the same JSON line, e.g. {"from":{...,
+          # "version":"n/a"}, "to":{..., "version":"1.5.3"}}). Pattern restricts
+          # to SemVer-shaped strings so "n/a" is not captured.
+          grep -rEn '"version":[[:space:]]*"[0-9]+\.[0-9]+\.[0-9]+"' examples/ \
+            > /tmp/fixture-matches.txt || true
+          fail=0
+          while IFS= read -r match; do
+            file=$(echo "$match" | cut -d: -f1)
+            # Extract every SemVer literal on this line; iterate each.
+            echo "$match" | grep -oE '"[0-9]+\.[0-9]+\.[0-9]+"' | tr -d '"' \
+              | while IFS= read -r ver; do
+                  if ! grep -Fxq "$ver" /tmp/latest-versions.txt; then
+                    echo "::error file=$file::version $ver not found in roster versions.latest"
+                    echo "DRIFT" >> /tmp/drift-flag
+                  fi
+                done
+          done < /tmp/fixture-matches.txt
+          if [ -f /tmp/drift-flag ]; then
+            echo "drift check failed: one or more fixture versions are not in the upstream roster"
+            exit 1
+          fi
+          echo "drift check passed: all fixture versions are in the upstream roster"

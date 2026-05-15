@@ -13,6 +13,13 @@ targets — see `README.md` and the spec at
 ### Added
 
 ### Changed
+- Example fixtures bumped to current published Eidolon versions
+  (atlas 1.5.3, spectra 4.3.3, apivr 3.1.3) so `junction run --plan`
+  resolves to GHCR images that actually exist. Resolves Friction-4 from
+  the v0.1.0 README walk.
+- New `fixture-version-drift` CI gate prevents future drift by asserting
+  every version literal under `examples/**` appears in the upstream
+  nexus `roster/index.yaml`'s `versions.latest` set.
 - L1 schema accepts ECL v1.0 and v2.0 envelopes per ECL §7.3 compat window;
   L3/L4 remain the semantic gate. Resolves OQ-23 Friction-5 from the v0.1.0
   README walk. `.eclref` stays pinned to v1.0; this is a v1.0-and-v2.0-tolerant
