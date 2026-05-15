@@ -12,6 +12,16 @@ targets — see `README.md` and the spec at
 
 ### Added
 
+### Fixed
+- Plan dispatch (`junction run --plan`) now correctly threads each step's
+  `to.version` through to the container resolver. Previously the version
+  was dropped on the floor in `plan.ToChainSteps()` and `ChainExecutor`,
+  causing every plan step to fail with "to.version is empty" after the
+  `:latest` GHCR fallback was removed in v0.1.1 (WS-V1-E). `dispatch.ChainStep`
+  gains a `ToVersion` field; `plan.ToChainSteps()` populates it; `ChainExecutor`
+  threads it to `Request.EidolonVersion`; `ContainerExecutor` prefers
+  `req.EidolonVersion` over `c.EidolonVersion` for per-step overrides (WS-V2-B).
+
 ### Changed
 - Example fixtures bumped to current published Eidolon versions
   (atlas 1.5.3, spectra 4.3.3, apivr 3.1.3) so `junction run --plan`
