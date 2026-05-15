@@ -7,7 +7,7 @@
     {
       "step_id": "S0",
       "from": {"eidolon": "human",  "version": "n/a"},
-      "to":   {"eidolon": "atlas",  "version": "1.5.2"},
+      "to":   {"eidolon": "atlas",  "version": "1.5.3"},
       "performative": "REQUEST",
       "edge_origin": "roster",
       "objective": "Scout the Junction dispatch path and produce a seam report.",
@@ -21,8 +21,8 @@
     },
     {
       "step_id": "S1",
-      "from": {"eidolon": "atlas",   "version": "1.5.2"},
-      "to":   {"eidolon": "spectra", "version": "4.2.8"},
+      "from": {"eidolon": "atlas",   "version": "1.5.3"},
+      "to":   {"eidolon": "spectra", "version": "4.3.3"},
       "performative": "INFORM",
       "edge_origin": "roster",
       "objective": "Refine the scout findings into a decision-ready specification for F9-S0.",
@@ -31,8 +31,8 @@
     },
     {
       "step_id": "S2",
-      "from": {"eidolon": "spectra", "version": "4.2.8"},
-      "to":   {"eidolon": "apivr",   "version": "2.1.0"},
+      "from": {"eidolon": "spectra", "version": "4.3.3"},
+      "to":   {"eidolon": "apivr",   "version": "3.1.3"},
       "performative": "DELEGATE",
       "edge_origin": "roster",
       "objective": "Implement the plan.json ingestion seam per the round-6 spec.",

@@ -9,7 +9,7 @@
   },
   "to": {
     "eidolon": "atlas",
-    "version": "1.5.2"
+    "version": "1.5.3"
   },
   "performative": "REQUEST",
   "edge_origin": "roster",
