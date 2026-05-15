@@ -117,8 +117,13 @@ jobs:
             fi
           fi
 
-      - name: G-J0.1-2 Distroless runtime smoke (linux only)
-        if: matrix.os == 'linux'
+      # Distroless runtime smoke runs on linux/amd64 only — the GitHub
+      # runner is x86_64 and cannot `exec` a cross-compiled arm64 binary
+      # without qemu-user-static. The G-J0.1-1 static-link check (above)
+      # already confirms the arm64 binary is statically linked; smoke on
+      # real arm64 hardware is deferred to v0.2 when we add qemu setup.
+      - name: G-J0.1-2 Distroless runtime smoke (linux/amd64 only)
+        if: matrix.os == 'linux' && matrix.arch == 'amd64'
         env:
           ARCH: ${{ matrix.arch }}
         run: |
