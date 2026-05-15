@@ -1,0 +1,229 @@
+name: release
+
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Release version (SemVer, no leading v — e.g. 1.2.3)'
+        type: string
+        required: true
+
+# Never auto-cancel an in-flight release.
+concurrency:
+  group: 'release-${{ inputs.version }}'
+  cancel-in-progress: false
+
+# Minimal default permissions; publish job overrides.
+permissions:
+  contents: read
+
+jobs:
+  # ── 0. Validate SemVer input ────────────────────────────────────────────────
+  validate-input:
+    name: Validate version input
+    runs-on: ubuntu-latest
+    steps:
+      - name: Assert SemVer format (no leading v)
+        run: |
+          VERSION="${{ inputs.version }}"
+          echo "Validating version: ${VERSION}"
+          if ! echo "${VERSION}" | grep -Eq '^[0-9]+\.[0-9]+\.[0-9]+(-[0-9A-Za-z.-]+)?$'; then
+            echo "ERROR: version '${VERSION}' does not match SemVer regex ^[0-9]+\.[0-9]+\.[0-9]+(-[0-9A-Za-z.-]+)?$"
+            echo "Leading 'v' is not accepted. Use bare SemVer (e.g. 1.2.3)."
+            exit 1
+          fi
+          echo "Version '${VERSION}' is valid SemVer."
+
+  # ── 1. Verify (tests + lint) ────────────────────────────────────────────────
+  verify:
+    name: Verify (go test + golangci-lint)
+    needs: [validate-input]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+          cache: true
+
+      - name: go test
+        run: go test ./...
+
+      - name: golangci-lint
+        uses: golangci/golangci-lint-action@v6
+        with:
+          version: latest
+
+  # ── 2. Build matrix ─────────────────────────────────────────────────────────
+  build:
+    name: 'Build ${{ matrix.os }}/${{ matrix.arch }}'
+    needs: [verify]
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: linux
+            arch: amd64
+          - os: linux
+            arch: arm64
+          - os: darwin
+            arch: amd64
+          - os: darwin
+            arch: arm64
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+          cache: true
+
+      - name: Compute build date
+        id: builddate
+        run: |
+          BUILD_DATE=$(date -u +%Y-%m-%dT%H:%M:%SZ)
+          echo "BUILD_DATE=${BUILD_DATE}" >> "$GITHUB_OUTPUT"
+
+      - name: Build binary
+        env:
+          GOOS: ${{ matrix.os }}
+          GOARCH: ${{ matrix.arch }}
+          CGO_ENABLED: ${{ matrix.os == 'linux' && '0' || '' }}
+          GOFLAGS: ${{ matrix.os == 'linux' && '-tags=netgo,osusergo' || '' }}
+        run: |
+          mkdir -p dist
+          go build -trimpath \
+            -ldflags="-s -w -X main.Version=${{ inputs.version }} -X main.Commit=${{ github.sha }} -X main.Date=${{ steps.builddate.outputs.BUILD_DATE }}" \
+            -o "dist/junction-${{ matrix.os }}-${{ matrix.arch }}" \
+            ./cmd/junction
+
+      - name: G-J0.1-1 Static-link conformance (linux only)
+        if: matrix.os == 'linux'
+        env:
+          ARCH: ${{ matrix.arch }}
+        run: |
+          set -e
+          BIN="dist/junction-linux-${ARCH}"
+          file "$BIN" | grep -q "statically linked" || { echo "G-J0.1-1 FAIL: $BIN not statically linked"; exit 1; }
+          if [ "$ARCH" = "amd64" ]; then
+            if ldd "$BIN" 2>&1 | grep -q "not a dynamic executable"; then
+              echo "G-J0.1-1 PASS (ldd)"
+            else
+              echo "G-J0.1-1 FAIL: ldd suggests dynamic linkage"
+              ldd "$BIN" || true
+              exit 1
+            fi
+          fi
+
+      - name: G-J0.1-2 Distroless runtime smoke (linux only)
+        if: matrix.os == 'linux'
+        env:
+          ARCH: ${{ matrix.arch }}
+        run: |
+          set -e
+          docker run --rm \
+            -v "$PWD/dist:/d:ro" \
+            gcr.io/distroless/static-debian12:nonroot \
+            /d/junction-linux-${ARCH} --version > smoke.out
+          head -n1 smoke.out | grep -Fxq "junction ${{ inputs.version }} (ECL 1.0.0)" || {
+            echo "G-J0.1-2 FAIL: unexpected --version output"
+            cat smoke.out
+            exit 1
+          }
+          echo "G-J0.1-2 PASS"
+
+      - name: Upload binary artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: 'junction-${{ matrix.os }}-${{ matrix.arch }}'
+          path: 'dist/junction-${{ matrix.os }}-${{ matrix.arch }}'
+          retention-days: 1
+          if-no-files-found: error
+
+  # ── 3. Publish (tag + checksum + release + attest) ─────────────────────────
+  publish:
+    name: Publish release
+    needs: [build]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      id-token: write
+      attestations: write
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Configure git identity
+        run: |
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git config user.name "github-actions[bot]"
+
+      - name: Pre-existence guard
+        run: |
+          if git ls-remote --tags --exit-code origin "refs/tags/v${{ inputs.version }}"; then
+            echo "ERROR: tag v${{ inputs.version }} already exists at origin — aborting."
+            exit 1
+          fi
+          echo "Tag v${{ inputs.version }} does not exist. Proceeding."
+
+      - name: Download all binary artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: dist-artifacts
+
+      - name: Consolidate dist directory
+        run: |
+          mkdir -p dist
+          find dist-artifacts -type f | while read -r f; do
+            base=$(basename "$f")
+            cp "$f" "dist/${base}"
+            chmod +x "dist/${base}"
+          done
+          ls -lh dist/
+
+      - name: Compute SHA256SUMS
+        working-directory: dist
+        run: |
+          sha256sum \
+            junction-linux-amd64 \
+            junction-linux-arm64 \
+            junction-darwin-amd64 \
+            junction-darwin-arm64 \
+            > SHA256SUMS
+          cat SHA256SUMS
+
+      - name: Extract CHANGELOG section for release notes
+        run: |
+          awk '/^## \['"${{ inputs.version }}"'\]/{flag=1;next} /^## \[/{flag=0} flag' CHANGELOG.md > release-notes.md
+          if [ ! -s release-notes.md ]; then
+            echo "WARNING: no CHANGELOG section found for [${{ inputs.version }}]"
+            echo "Release ${{ inputs.version }}" > release-notes.md
+          fi
+          cat release-notes.md
+
+      - name: Create and push annotated tag
+        run: |
+          git tag -a "v${{ inputs.version }}" "${{ github.sha }}" -m "Junction v${{ inputs.version }}"
+          git push origin "v${{ inputs.version }}"
+
+      - name: Create GitHub Release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh release create "v${{ inputs.version }}" \
+            dist/junction-linux-amd64 \
+            dist/junction-linux-arm64 \
+            dist/junction-darwin-amd64 \
+            dist/junction-darwin-arm64 \
+            dist/SHA256SUMS \
+            --title "Junction v${{ inputs.version }}" \
+            --notes-file release-notes.md \
+            --target "${{ github.sha }}"
+
+      - name: Attest build provenance (SLSA L3)
+        uses: actions/attest-build-provenance@v2
+        with:
+          subject-path: dist/junction-*
