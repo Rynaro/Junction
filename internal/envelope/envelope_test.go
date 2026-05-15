@@ -165,19 +165,48 @@ func TestValidate_MissingRequiredField(t *testing.T) {
 // THEN it returns a schema error pointing at the field.
 func TestValidate_BadEnvelopeVersion(t *testing.T) {
 	dir := fixturesDir(t)
-	env, err := envelope.Read(filepath.Join(dir, "scout-report.md.envelope.json"))
-	if err != nil {
-		t.Fatalf("Read: %v", err)
-	}
 
-	env.EnvelopeVersion = "2.0" // Not in the "^1\.0" pattern
-
-	err = env.Validate()
-	if err == nil {
-		t.Fatal("Validate() = nil, want schema error for envelope_version")
+	// Versions outside the ^[12]\.0(\.\d+)?$ window must be rejected.
+	invalid := []string{"3.0", "1.1", "0.9", "2.1", "foo"}
+	for _, ver := range invalid {
+		ver := ver
+		t.Run(ver, func(t *testing.T) {
+			env, err := envelope.Read(filepath.Join(dir, "scout-report.md.envelope.json"))
+			if err != nil {
+				t.Fatalf("Read: %v", err)
+			}
+			env.EnvelopeVersion = ver
+			err = env.Validate()
+			if err == nil {
+				t.Fatalf("Validate(%q) = nil, want schema error for envelope_version", ver)
+			}
+			if !errors.Is(err, envelope.ErrSchemaValidation) {
+				t.Errorf("Validate(%q) = %v, want wrapped ErrSchemaValidation", ver, err)
+			}
+		})
 	}
-	if !errors.Is(err, envelope.ErrSchemaValidation) {
-		t.Errorf("Validate() = %v, want wrapped ErrSchemaValidation", err)
+}
+
+// GIVEN an envelope with envelope_version in the ECL §7.3 compat window (v1.0 or v2.0)
+// WHEN Validate runs
+// THEN it returns nil (widening resolves OQ-23 / Friction-5).
+func TestValidate_EnvelopeVersionCompat(t *testing.T) {
+	dir := fixturesDir(t)
+
+	// All these must be accepted by the widened ^[12]\.0(\.\d+)?$ regex.
+	valid := []string{"1.0", "1.0.0", "1.0.1", "2.0", "2.0.0", "2.0.1"}
+	for _, ver := range valid {
+		ver := ver
+		t.Run(ver, func(t *testing.T) {
+			env, err := envelope.Read(filepath.Join(dir, "scout-report.md.envelope.json"))
+			if err != nil {
+				t.Fatalf("Read: %v", err)
+			}
+			env.EnvelopeVersion = ver
+			if err := env.Validate(); err != nil {
+				t.Errorf("Validate(%q) = %v, want nil", ver, err)
+			}
+		})
 	}
 }
 
