@@ -43,7 +43,10 @@ jobs:
 
       - name: Fail on drift
         run: |
-          if ! git diff --exit-code -- internal/contracts/; then
+          # Exclude VERSION because make sync-contracts re-stamps it with
+          # today's date, which deterministically breaks any PR opened on a
+          # day after the last sync commit (the .eclref pin is unchanged).
+          if ! git diff --exit-code -- internal/contracts/ ':!internal/contracts/VERSION'; then
             echo "internal/contracts/ is out of sync with internal/contracts/.eclref. Run \`make sync-contracts\` and commit the result."
             exit 1
           fi
