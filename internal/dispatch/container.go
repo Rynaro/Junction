@@ -154,7 +154,12 @@ func (c *ContainerExecutor) Execute(ctx context.Context, req Request) (Result, e
 		}
 	}
 
-	image, err := c.resolveImage(ctx, req.Eidolon)
+	// Per-step version overrides the executor-level default.
+	version := req.EidolonVersion
+	if version == "" {
+		version = c.EidolonVersion
+	}
+	image, err := c.resolveImage(ctx, req.Eidolon, version)
 	if err != nil {
 		return Result{}, err
 	}
@@ -323,18 +328,18 @@ func (c *ContainerExecutor) probeDaemon(ctx context.Context) error {
 //
 // Priority:
 //  1. JUNCTION_EIDOLON_IMAGE_<UPPER_EIDOLON> env var.
-//  2. ghcr.io/rynaro/<lowercased-eidolon>:<version> where version comes from
-//     c.EidolonVersion (which in turn comes from the plan step's to.version).
+//  2. ghcr.io/rynaro/<lowercased-eidolon>:<version> where version is the
+//     caller-supplied value (derived from req.EidolonVersion, which comes from
+//     the plan step's to.version, falling back to c.EidolonVersion).
 //
-// If EidolonVersion is empty, resolveImage returns ErrImageNotAvailable
-// immediately — there is no ":latest" fallback (images are SemVer-only by
-// registry policy).
+// If version is empty, resolveImage returns ErrImageNotAvailable immediately —
+// there is no ":latest" fallback (images are SemVer-only by registry policy).
 //
 // If the resolved image is not pullable, returns ErrImageNotAvailable (exit 71)
 // with an actionable message naming the pinned version, the full image ref,
-// and the override env-var.  Build-from-source fallback is deferred to v0.2
+// and the override env-var. Build-from-source fallback is deferred to v0.2
 // (OQ-17).
-func (c *ContainerExecutor) resolveImage(ctx context.Context, eidolon string) (string, error) {
+func (c *ContainerExecutor) resolveImage(ctx context.Context, eidolon, version string) (string, error) {
 	// 1. Env override.
 	envKey := "JUNCTION_EIDOLON_IMAGE_" + toEnvSlug(eidolon)
 	if img := os.Getenv(envKey); img != "" {
@@ -344,7 +349,6 @@ func (c *ContainerExecutor) resolveImage(ctx context.Context, eidolon string) (s
 	// 2. Pinned GHCR image — version must come from the plan (to.version).
 	// No ":latest" fallback: the registry publishes SemVer tags only, and a
 	// floating tag would defeat the reproducibility guarantee.
-	version := c.EidolonVersion
 	if version == "" {
 		return "", fmt.Errorf("%w: eidolon %q has no version set in the plan (to.version is empty). "+
 			"Set JUNCTION_EIDOLON_IMAGE_%s to override. "+

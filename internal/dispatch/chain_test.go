@@ -26,12 +26,14 @@ type stubExecutorCall struct {
 }
 
 // stubExecutor is a sequential stub Executor. Each Execute call pops the next
-// canned response from the queue.
+// canned response from the queue and records the received Request.
 type stubExecutor struct {
-	calls []stubExecutorCall
+	calls    []stubExecutorCall
+	received []dispatch.Request
 }
 
 func (s *stubExecutor) Execute(_ context.Context, req dispatch.Request) (dispatch.Result, error) {
+	s.received = append(s.received, req)
 	if len(s.calls) == 0 {
 		return dispatch.Result{StepID: req.StepID, ExitCode: 0}, nil
 	}
@@ -209,5 +211,49 @@ func TestChainExecutor_NoRegistry_SkipsContractCheck(t *testing.T) {
 	}
 	if len(result.Steps) != 2 {
 		t.Errorf("got %d steps, want 2", len(result.Steps))
+	}
+}
+
+// GIVEN a chain where each step has a distinct ToVersion
+// WHEN Execute is called
+// THEN each Request received by the executor has EidolonVersion equal to the
+// step's ToVersion (WS-V2-B: version threading).
+func TestChainExecutor_ThreadsToVersionToRequest(t *testing.T) {
+	base := t.TempDir()
+	firstEnv := cannedEnvelope(t, base, "input")
+
+	exec := &stubExecutor{
+		calls: []stubExecutorCall{
+			{result: dispatch.Result{ExitCode: 0, OutputEnvelopePath: filepath.Join(base, "S0", "out", "out.envelope.json")}},
+			{result: dispatch.Result{ExitCode: 0, OutputEnvelopePath: filepath.Join(base, "S1", "out", "out.envelope.json")}},
+		},
+	}
+
+	chain := &dispatch.ChainExecutor{
+		Executor:      exec,
+		Registry:      nil,
+		ThreadID:      "chain-version-001",
+		BaseOutputDir: base,
+	}
+
+	steps := []dispatch.ChainStep{
+		{StepID: "S0", Eidolon: "atlas", ToVersion: "1.5.3", InitialEnvelopePath: firstEnv},
+		{StepID: "S1", Eidolon: "spectra", ToVersion: "4.2.8"},
+	}
+
+	_, err := chain.Execute(context.Background(), steps)
+	if err != nil {
+		t.Fatalf("chain.Execute: %v", err)
+	}
+
+	if len(exec.received) != 2 {
+		t.Fatalf("got %d received requests, want 2", len(exec.received))
+	}
+
+	if exec.received[0].EidolonVersion != "1.5.3" {
+		t.Errorf("S0 Request.EidolonVersion = %q, want %q", exec.received[0].EidolonVersion, "1.5.3")
+	}
+	if exec.received[1].EidolonVersion != "4.2.8" {
+		t.Errorf("S1 Request.EidolonVersion = %q, want %q", exec.received[1].EidolonVersion, "4.2.8")
 	}
 }

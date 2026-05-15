@@ -54,6 +54,12 @@ type Request struct {
 	// Host-LLM credentials should be passed here; they are never logged or
 	// persisted by Junction.
 	Env []string
+
+	// EidolonVersion is the per-step version override for the target Eidolon.
+	// When non-empty, ContainerExecutor uses this value to resolve the GHCR
+	// image tag instead of the executor-level EidolonVersion field. This allows
+	// each step in a chain to dispatch to a different Eidolon version.
+	EidolonVersion string
 }
 
 // Result is the output of a successful dispatch call.

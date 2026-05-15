@@ -36,6 +36,11 @@ type ChainStep struct {
 	// To is the receiver identity for contract edge validation.
 	To string
 
+	// ToVersion is the version of the receiving Eidolon, sourced from the plan
+	// step's to.version field. It is threaded through to Request.EidolonVersion
+	// so the ContainerExecutor can resolve the correct GHCR image tag.
+	ToVersion string
+
 	// Performative is the ECL performative for this edge (e.g. "REQUEST", "PROPOSE").
 	Performative string
 
@@ -106,13 +111,14 @@ func (c *ChainExecutor) Execute(ctx context.Context, steps []ChainStep) (ChainRe
 		outputDir := filepath.Join(c.BaseOutputDir, step.StepID, "out")
 
 		req := Request{
-			StepID:       step.StepID,
-			Eidolon:      step.Eidolon,
-			Subcommand:   step.Subcommand,
-			EnvelopePath: inputEnvelope,
-			ThreadID:     c.ThreadID,
-			OutputDir:    outputDir,
-			Env:          step.Env,
+			StepID:         step.StepID,
+			Eidolon:        step.Eidolon,
+			Subcommand:     step.Subcommand,
+			EnvelopePath:   inputEnvelope,
+			ThreadID:       c.ThreadID,
+			OutputDir:      outputDir,
+			Env:            step.Env,
+			EidolonVersion: step.ToVersion,
 		}
 
 		result, err := c.Executor.Execute(ctx, req)
