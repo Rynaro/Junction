@@ -231,10 +231,11 @@ func (p *Plan) ToChainSteps() []dispatch.ChainStep {
 	steps := make([]dispatch.ChainStep, len(p.Steps))
 	for i, s := range p.Steps {
 		cs := dispatch.ChainStep{
-			StepID:      s.StepID,
-			Eidolon:     s.To.Eidolon,
-			From:        s.From.Eidolon,
-			To:          s.To.Eidolon,
+			StepID:       s.StepID,
+			Eidolon:      s.To.Eidolon,
+			From:         s.From.Eidolon,
+			To:           s.To.Eidolon,
+			ToVersion:    s.To.Version,
 			Performative: s.Performative,
 		}
 		if i == 0 && s.Artifact != nil {

@@ -215,6 +215,51 @@ func TestToChainSteps_MultiStep(t *testing.T) {
 	}
 }
 
+// GIVEN a plan with to.version set on each step
+// WHEN ToChainSteps is called
+// THEN each ChainStep.ToVersion matches the source plan's to.version.
+func TestToChainSteps_ToVersionRoundtrip(t *testing.T) {
+	p, err := plan.Parse(strings.NewReader(validPlanJSON))
+	if err != nil {
+		t.Fatalf("parse: %v", err)
+	}
+
+	steps := p.ToChainSteps()
+	if len(steps) != 1 {
+		t.Fatalf("got %d chain steps, want 1", len(steps))
+	}
+
+	// validPlanJSON has to.version = "1.5.2" for step S0.
+	if steps[0].ToVersion != "1.5.2" {
+		t.Errorf("steps[0].ToVersion: got %q, want %q", steps[0].ToVersion, "1.5.2")
+	}
+}
+
+// GIVEN a multi-step plan with distinct to.version values
+// WHEN ToChainSteps is called
+// THEN each ChainStep.ToVersion matches its respective to.version.
+func TestToChainSteps_MultiStep_ToVersionRoundtrip(t *testing.T) {
+	p, err := plan.Parse(strings.NewReader(validPlanContainerJSON))
+	if err != nil {
+		t.Fatalf("parse: %v", err)
+	}
+
+	steps := p.ToChainSteps()
+	if len(steps) != 2 {
+		t.Fatalf("got %d chain steps, want 2", len(steps))
+	}
+
+	// validPlanContainerJSON has:
+	//   S0: to.version = "4.2.8"
+	//   S1: to.version = "2.1.0"
+	if steps[0].ToVersion != "4.2.8" {
+		t.Errorf("steps[0].ToVersion: got %q, want %q", steps[0].ToVersion, "4.2.8")
+	}
+	if steps[1].ToVersion != "2.1.0" {
+		t.Errorf("steps[1].ToVersion: got %q, want %q", steps[1].ToVersion, "2.1.0")
+	}
+}
+
 // ---------------------------------------------------------------------------
 // SelectExecutor tests
 // ---------------------------------------------------------------------------
