@@ -158,6 +158,13 @@ func makeRunHandler() HandlerFunc {
 			return nil, fmt.Errorf("harness.run: plan_path is required")
 		}
 
+		// Fast-fail: verify the envelope/plan file exists before invoking
+		// the subprocess. This avoids confusing errors from the shell executor
+		// and makes the missing-file error deterministic.
+		if _, statErr := os.Stat(in.PlanPath); statErr != nil {
+			return nil, fmt.Errorf("harness.run: plan_path %q: %w", in.PlanPath, statErr)
+		}
+
 		// Resolve the junction binary path from the running process.
 		self, err := os.Executable()
 		if err != nil {
