@@ -1,0 +1,112 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/Rynaro/Junction/schemas/plan.v1.json",
+  "title": "Junction plan.json v1",
+  "description": "Input plan consumed by `junction run <plan.json>`. Defined by Junction spec §7.5 (round 5/6).",
+  "type": "object",
+  "required": ["thread_id", "tier", "steps"],
+  "additionalProperties": false,
+  "properties": {
+    "thread_id": {
+      "type": "string",
+      "description": "UUIDv7 that uniquely identifies this execution thread."
+    },
+    "tier": {
+      "type": "string",
+      "enum": ["standard", "trance"],
+      "description": "Execution tier hint for the cortex routing logic."
+    },
+    "enforce": {
+      "type": "string",
+      "enum": ["fail-fast", "warn", "off"],
+      "default": "fail-fast",
+      "description": "Contract-enforcement mode (mirrors --enforce CLI flag)."
+    },
+    "executor": {
+      "type": "string",
+      "enum": ["container", "shell"],
+      "default": "container",
+      "description": "Default executor for all steps. Steps may not override this in v1."
+    },
+    "steps": {
+      "type": "array",
+      "minItems": 1,
+      "description": "Ordered list of dispatch steps.",
+      "items": {
+        "type": "object",
+        "required": ["step_id", "from", "to", "performative"],
+        "additionalProperties": false,
+        "properties": {
+          "step_id": {
+            "type": "string",
+            "description": "Human-readable step identifier, e.g. \"S0\"."
+          },
+          "from": {
+            "$ref": "#/$defs/identity"
+          },
+          "to": {
+            "$ref": "#/$defs/identity"
+          },
+          "performative": {
+            "type": "string",
+            "enum": [
+              "REQUEST", "PROPOSE", "ACCEPT", "REFUSE",
+              "INFORM", "CONFIRM", "ESCALATE", "DELEGATE",
+              "QUERY", "ACKNOWLEDGE"
+            ],
+            "description": "ECL performative (closed set of 10, spec §2)."
+          },
+          "edge_origin": {
+            "type": "string",
+            "description": "Source of the edge declaration, e.g. \"roster\"."
+          },
+          "objective": {
+            "type": "string",
+            "description": "Human-readable description of the step's goal."
+          },
+          "artifact": {
+            "type": "object",
+            "required": ["kind", "schema_version", "path"],
+            "additionalProperties": false,
+            "properties": {
+              "kind": {
+                "type": "string"
+              },
+              "schema_version": {
+                "type": "string"
+              },
+              "path": {
+                "type": "string",
+                "description": "Relative path to the input artifact; used as EnvelopePath."
+              }
+            }
+          },
+          "model_tier_hint": {
+            "type": "string",
+            "description": "Hint for the reasoning tier to use, e.g. \"reasoning-class\"."
+          },
+          "constraints": {
+            "type": "object",
+            "description": "Optional per-step execution constraints.",
+            "additionalProperties": true
+          }
+        }
+      }
+    }
+  },
+  "$defs": {
+    "identity": {
+      "type": "object",
+      "required": ["eidolon", "version"],
+      "additionalProperties": false,
+      "properties": {
+        "eidolon": {
+          "type": "string"
+        },
+        "version": {
+          "type": "string"
+        }
+      }
+    }
+  }
+}

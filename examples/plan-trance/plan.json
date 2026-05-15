@@ -1,0 +1,43 @@
+{
+  "thread_id": "01jwqbm9k000000000000trance",
+  "tier": "trance",
+  "enforce": "fail-fast",
+  "executor": "container",
+  "steps": [
+    {
+      "step_id": "S0",
+      "from": {"eidolon": "human",  "version": "n/a"},
+      "to":   {"eidolon": "atlas",  "version": "1.5.2"},
+      "performative": "REQUEST",
+      "edge_origin": "roster",
+      "objective": "Scout the Junction dispatch path and produce a seam report.",
+      "artifact": {
+        "kind": "prompt",
+        "schema_version": "1.0",
+        "path": "input/scout-prompt.md"
+      },
+      "model_tier_hint": "reasoning-class",
+      "constraints": {"trust_level": "standard"}
+    },
+    {
+      "step_id": "S1",
+      "from": {"eidolon": "atlas",   "version": "1.5.2"},
+      "to":   {"eidolon": "spectra", "version": "4.2.8"},
+      "performative": "INFORM",
+      "edge_origin": "roster",
+      "objective": "Refine the scout findings into a decision-ready specification for F9-S0.",
+      "model_tier_hint": "reasoning-class",
+      "constraints": {"trust_level": "standard"}
+    },
+    {
+      "step_id": "S2",
+      "from": {"eidolon": "spectra", "version": "4.2.8"},
+      "to":   {"eidolon": "apivr",   "version": "2.1.0"},
+      "performative": "DELEGATE",
+      "edge_origin": "roster",
+      "objective": "Implement the plan.json ingestion seam per the round-6 spec.",
+      "model_tier_hint": "reasoning-class",
+      "constraints": {"trust_level": "standard"}
+    }
+  ]
+}
