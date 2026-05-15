@@ -48,14 +48,16 @@ func mcpCmd(args []string) error {
 func mcpServeCmd(args []string) error {
 	// No flags in v0.1 — flag parsing reserved for future --contracts-dir etc.
 	for _, a := range args {
-		if a == "--help" || a == "-h" {
+		switch a {
+		case "--help", "-h":
 			fmt.Fprintf(os.Stdout, "Usage: junction mcp serve\n\n"+
 				"Start the Junction MCP stdio server (MCP 2025-03-26 protocol).\n"+
 				"Claude Code launches this as a stdio subprocess via .mcp.json.\n"+
 				"All MCP traffic on stdin/stdout; diagnostics on stderr.\n")
 			return nil
+		default:
+			return fmt.Errorf("mcp serve: unknown flag %q", a)
 		}
-		return fmt.Errorf("mcp serve: unknown flag %q", a)
 	}
 
 	reg, err := mcp.NewRegistryDefault()
