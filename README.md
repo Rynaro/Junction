@@ -72,6 +72,17 @@ The entry in `.mcp.json` looks like:
 
 Run it twice — the second run is a no-op and produces byte-identical output (idempotent).
 
+### 3.5 Obtain the example envelopes and plans
+
+Step 4 references files under `examples/` — these ship with the Junction repository and aren't seeded into your project by `junction mcp install`. Get a copy:
+
+```bash
+git clone --depth 1 --branch v0.1.1 https://github.com/Rynaro/Junction.git junction-repo
+cd junction-repo
+```
+
+Run the Step 4 commands below from inside `junction-repo`. (Preview: v0.2 will add `junction init` to scaffold a project directly, so this clone step goes away.)
+
 ### 4. Dispatch a TRANCE plan from Claude Code
 
 Start a Claude Code session in your project. The MCP server launches automatically. You now have access to four tools:
