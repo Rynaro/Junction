@@ -218,12 +218,11 @@ func runPlanCmd(cfg runConfig) error {
 		return &exitError{code: 64, cause: fmt.Errorf("run: parsing plan: %w", err)}
 	}
 
-	// Apply --enforce from CLI; plan.enforce is used only when CLI flag is
-	// the default "fail-fast" (i.e. not explicitly overridden).
-	enforce := cfg.enforce
-	if enforce == "" {
-		enforce = p.Enforce
-	}
+	// TODO(F9-S0 follow-up): wire plan.enforce / cfg.enforce into ChainExecutor.
+	// The dispatch.ChainExecutor in v0.1 does not yet accept a per-chain
+	// enforce mode; the plan-level field is parsed but not propagated.
+	_ = cfg.enforce
+	_ = p.Enforce
 
 	traceRoot := cfg.traceRoot
 	if traceRoot == "" {
