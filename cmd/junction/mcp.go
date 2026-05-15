@@ -2,15 +2,12 @@ package main
 
 // mcp.go wires the `junction mcp` subcommand family.
 //
-// Current subcommands:
+// Subcommands:
 //
-//	junction mcp serve  — start the hand-rolled JSON-RPC 2.0 / stdio MCP server
-//	                      (MCP 2025-03-26 stdio transport, zero new deps).
-//
-// Future subcommands (F9-S7):
-//
-//	junction mcp install [--with-skill]  — write .mcp.json entry + optional SKILL.md
-//	junction mcp uninstall               — excise exactly what install wrote
+//	junction mcp serve               — start the hand-rolled JSON-RPC 2.0 / stdio MCP server
+//	                                   (MCP 2025-03-26 stdio transport, zero new deps).
+//	junction mcp install [--with-skill] — write idempotent .mcp.json entry + optional SKILL.md
+//	junction mcp uninstall           — excise exactly what install wrote
 
 import (
 	"context"
@@ -25,15 +22,17 @@ import (
 // mcpCmd dispatches `junction mcp <sub>`.
 func mcpCmd(args []string) error {
 	if len(args) == 0 {
-		return fmt.Errorf("mcp: subcommand required — try `junction mcp serve`")
+		return fmt.Errorf("mcp: subcommand required — try `junction mcp serve`, `junction mcp install`, or `junction mcp uninstall`")
 	}
 	switch args[0] {
 	case "serve":
 		return mcpServeCmd(args[1:])
-	case "install", "uninstall":
-		return fmt.Errorf("mcp %s: not yet implemented — coming in F9-S7", args[0])
+	case "install":
+		return mcpInstallCmd(args[1:])
+	case "uninstall":
+		return mcpUninstallCmd(args[1:])
 	default:
-		return fmt.Errorf("mcp: unknown subcommand %q — known: serve", args[0])
+		return fmt.Errorf("mcp: unknown subcommand %q — known: serve, install, uninstall", args[0])
 	}
 }
 
