@@ -71,7 +71,9 @@ func run(args []string) error {
 		return runCmd(args[1:])
 	case "verify":
 		return verifyCmd(args[1:])
-	case "resume", "trace", "inject", "stop", "doctor", "mcp":
+	case "mcp":
+		return mcpCmd(args[1:])
+	case "resume", "trace", "inject", "stop", "doctor":
 		return fmt.Errorf("%s: not yet implemented in F1 — coming in Phase 2/3", args[0])
 	default:
 		return fmt.Errorf("unknown command %q — run `junction --help` for usage", args[0])
@@ -435,8 +437,12 @@ Env:
   JUNCTION_TRACE_ROOT   override default trace root (.junction/threads/)
   JUNCTION_CONTRACTS_DIR override default embedded contracts
 
-Phase 2+ commands (resume, trace, inject, stop, doctor, mcp) are not yet
-implemented in F1.
+  junction mcp serve
+  junction mcp install [--with-skill]
+  junction mcp uninstall
+
+Phase 2+ commands (resume, trace, inject, stop, doctor) are not yet
+implemented in F1. mcp serve is implemented in F9-S6.
 `, Version, ECLVersion)
 }
 
