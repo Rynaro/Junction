@@ -22,7 +22,11 @@
 set -eu
 
 JUNCTION_REPO="Rynaro/Junction"
-INSTALL_DIR="${INSTALL_DIR:-$HOME/.local/bin}"
+# Destination directory resolution:
+#   1. JUNCTION_INSTALL_DIR  — set by the eidolons-nexus harness (cache-aware).
+#   2. INSTALL_DIR           — set by direct curl-bash callers who want a custom dir.
+#   3. $HOME/.local/bin      — default for interactive curl-bash use.
+INSTALL_DIR="${JUNCTION_INSTALL_DIR:-${INSTALL_DIR:-$HOME/.local/bin}}"
 
 # ── Logging helpers (stderr; stdout reserved for the final success line) ──
 say()  { printf '▸ %s\n' "$*" >&2; }
