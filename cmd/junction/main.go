@@ -24,6 +24,7 @@ import (
 	"github.com/Rynaro/Junction/internal/contracts"
 	"github.com/Rynaro/Junction/internal/dispatch"
 	"github.com/Rynaro/Junction/internal/envelope"
+	"github.com/Rynaro/Junction/internal/plan"
 	"github.com/Rynaro/Junction/internal/trace"
 )
 
@@ -86,6 +87,10 @@ type runConfig struct {
 	contractsDir string
 	traceRoot    string
 	enforce      string
+	// F9-S0: plan.json path.  When set, single-envelope mode is bypassed.
+	planPath string
+	// F9-S0: --no-container forces ShellExecutor regardless of plan.executor.
+	noContainer bool
 }
 
 func runCmd(args []string) error {
@@ -93,8 +98,15 @@ func runCmd(args []string) error {
 	if err != nil {
 		return err
 	}
+
+	// F9-S0: if --plan is provided, delegate to the plan-based dispatch path.
+	if cfg.planPath != "" {
+		return runPlanCmd(cfg)
+	}
+
+	// Legacy single-envelope path (backward compatible).
 	if cfg.envelopePath == "" {
-		return fmt.Errorf("run: --envelope is required")
+		return fmt.Errorf("run: --envelope or --plan is required")
 	}
 
 	ctx := context.Background()
@@ -141,17 +153,25 @@ func runCmd(args []string) error {
 	_ = journal.AppendVerify(env.MessageID, true, true, true, true, "")
 
 	// 5. Dispatch to the receiver Eidolon.
+	// F9-S0: the hardcoded ShellExecutor construction (original main.go:131) is
+	// replaced by plan.SelectExecutor. The single-envelope path always defaults
+	// to shell (no plan.executor to read from); --no-container is accepted but
+	// is a no-op here since shell is already the default.
 	stepID := "S0"
 	outputDir := filepath.Join(traceRoot, env.ThreadID, stepID, "out")
-	exec := &dispatch.ShellExecutor{
+
+	opts := plan.ExecutorOptions{
 		ProjectDir: cwd(),
 		CacheDir:   eidolonsCacheDir(),
 	}
+	// Single-envelope path: default executor is shell for backward compatibility.
+	exec := plan.SelectExecutor(plan.ExecutorModeShell, true, opts)
+	executorLabel := "shell"
 
 	_ = journal.AppendDispatch(stepID, env.MessageID,
 		env.From.Eidolon+"@"+env.From.Version,
 		env.To.Eidolon+"@"+env.To.Version,
-		"shell", "",
+		executorLabel, "",
 	)
 
 	result, dispErr := exec.Execute(ctx, dispatch.Request{
@@ -180,6 +200,65 @@ func runCmd(args []string) error {
 
 	fmt.Fprintf(stdout, "junction run: dispatched to %s (thread %s) — trace at %s\n",
 		env.To.Eidolon, env.ThreadID, journal.Path())
+	return nil
+}
+
+// runPlanCmd handles `junction run --plan <path>` (F9-S0).
+// It parses the plan.json, selects the executor from plan.executor (subject to
+// --no-container override), and runs all steps via ChainExecutor.
+func runPlanCmd(cfg runConfig) error {
+	f, err := os.Open(cfg.planPath)
+	if err != nil {
+		return &exitError{code: 64, cause: fmt.Errorf("run: opening plan: %w", err)}
+	}
+	defer f.Close()
+
+	p, err := plan.Parse(f)
+	if err != nil {
+		return &exitError{code: 64, cause: fmt.Errorf("run: parsing plan: %w", err)}
+	}
+
+	// Apply --enforce from CLI; plan.enforce is used only when CLI flag is
+	// the default "fail-fast" (i.e. not explicitly overridden).
+	enforce := cfg.enforce
+	if enforce == "" {
+		enforce = p.Enforce
+	}
+
+	traceRoot := cfg.traceRoot
+	if traceRoot == "" {
+		traceRoot = trace.DefaultTraceRoot
+	}
+
+	journal, err := trace.Open(traceRoot, p.ThreadID)
+	if err != nil {
+		return fmt.Errorf("run: opening trace journal: %w", err)
+	}
+	defer journal.Close()
+
+	opts := plan.ExecutorOptions{
+		ProjectDir: cwd(),
+		CacheDir:   eidolonsCacheDir(),
+	}
+	mode := plan.ModeFromString(p.Executor)
+	innerExec := plan.SelectExecutor(mode, cfg.noContainer, opts)
+
+	reg, _ := buildRegistry(cfg.contractsDir)
+	chain := &dispatch.ChainExecutor{
+		Executor:      innerExec,
+		Registry:      reg,
+		ThreadID:      p.ThreadID,
+		BaseOutputDir: filepath.Join(traceRoot, p.ThreadID),
+	}
+
+	steps := p.ToChainSteps()
+	_, chainErr := chain.Execute(context.Background(), steps)
+	if chainErr != nil {
+		return fmt.Errorf("run: plan chain: %w", chainErr)
+	}
+
+	fmt.Fprintf(os.Stdout, "junction run: plan %s completed — %d step(s), thread %s, trace at %s\n",
+		cfg.planPath, len(steps), p.ThreadID, journal.Path())
 	return nil
 }
 
@@ -333,6 +412,16 @@ func parseRunFlags(args []string) (runConfig, error) {
 				return cfg, fmt.Errorf("--envelope requires a value")
 			}
 			cfg.envelopePath = args[i]
+		case "--plan", "-plan":
+			// F9-S0: plan.json path.
+			i++
+			if i >= len(args) {
+				return cfg, fmt.Errorf("--plan requires a value")
+			}
+			cfg.planPath = args[i]
+		case "--no-container", "-no-container":
+			// F9-S0: force ShellExecutor regardless of plan.executor.
+			cfg.noContainer = true
 		case "--contracts-dir", "-contracts-dir":
 			i++
 			if i >= len(args) {
@@ -418,7 +507,8 @@ func printUsage() {
 	fmt.Fprintf(stdout, `junction %s — ECL v%s production harness
 
 Usage:
-  junction run    --envelope <path> [--contracts-dir <path>] [--trace-dir <path>] [--enforce {fail-fast|warn|off}]
+  junction run    --envelope <path> [--contracts-dir <path>] [--trace-dir <path>] [--enforce {fail-fast|warn|off}] [--no-container]
+  junction run    --plan <path>     [--contracts-dir <path>] [--trace-dir <path>] [--enforce {fail-fast|warn|off}] [--no-container]
   junction verify --envelope <path> [--contracts-dir <path>] [--enforce {fail-fast|warn|off}]
   junction --version
 
