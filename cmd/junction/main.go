@@ -15,6 +15,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"io"
 	"os"
 	"path/filepath"
 	"strings"
@@ -32,6 +33,10 @@ var Version = "0.1.0-dev"
 // ECLVersion records the vendored ECL spec version Junction was built against.
 const ECLVersion = "1.0.0"
 
+// stdout is the writer used for normal (non-error) output. Tests may replace
+// this to capture output without spawning a subprocess.
+var stdout io.Writer = os.Stdout
+
 func main() {
 	if err := run(os.Args[1:]); err != nil {
 		fmt.Fprintf(os.Stderr, "junction: %s\n", err)
@@ -47,7 +52,17 @@ func run(args []string) error {
 
 	switch args[0] {
 	case "--version", "-version", "version":
-		fmt.Printf("junction %s (ECL %s)\n", Version, ECLVersion)
+		fmt.Fprintf(stdout, "junction %s (ECL %s)\n", Version, ECLVersion)
+		if Commit != "" {
+			short := Commit
+			if len(short) > 7 {
+				short = short[:7]
+			}
+			fmt.Fprintf(stdout, "commit: %s\n", short)
+		}
+		if Date != "" {
+			fmt.Fprintf(stdout, "built:  %s\n", Date)
+		}
 		return nil
 	case "--help", "-help", "-h", "help":
 		printUsage()
@@ -163,7 +178,7 @@ func runCmd(args []string) error {
 		return fmt.Errorf("run: dispatch: %w", dispErr)
 	}
 
-	fmt.Fprintf(os.Stdout, "junction run: dispatched to %s (thread %s) — trace at %s\n",
+	fmt.Fprintf(stdout, "junction run: dispatched to %s (thread %s) — trace at %s\n",
 		env.To.Eidolon, env.ThreadID, journal.Path())
 	return nil
 }
@@ -192,7 +207,7 @@ func verifyCmd(args []string) error {
 		return err
 	}
 
-	fmt.Fprintf(os.Stdout, "junction verify: PASS — %s\n", cfg.envelopePath)
+	fmt.Fprintf(stdout, "junction verify: PASS — %s\n", cfg.envelopePath)
 	return nil
 }
 
@@ -400,7 +415,7 @@ func subcommandFromEnv() string {
 
 // printUsage writes the usage text to stdout.
 func printUsage() {
-	fmt.Printf(`junction %s — ECL v%s production harness
+	fmt.Fprintf(stdout, `junction %s — ECL v%s production harness
 
 Usage:
   junction run    --envelope <path> [--contracts-dir <path>] [--trace-dir <path>] [--enforce {fail-fast|warn|off}]

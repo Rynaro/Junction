@@ -11,6 +11,18 @@ targets — see `README.md` and the spec at
 ## [Unreleased]
 
 ### Added
+
+### Changed
+
+### Fixed
+
+### Security
+
+### Notes
+
+## [0.1.0] - 2026-05-15
+
+### Added
 - `junction run` and `junction verify` CLI commands with four-level envelope validation (L1 schema, L2 integrity, L3 edge, L4 performative).
 - ECL v1.0 envelope read/decode/validate/emit surface in `internal/envelope/`:
   - Typed Go structs for `ecl-envelope.v1.json` (Draft 2020-12).
