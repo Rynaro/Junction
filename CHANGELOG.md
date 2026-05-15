@@ -13,6 +13,10 @@ targets — see `README.md` and the spec at
 ### Added
 
 ### Changed
+- L1 schema accepts ECL v1.0 and v2.0 envelopes per ECL §7.3 compat window;
+  L3/L4 remain the semantic gate. Resolves OQ-23 Friction-5 from the v0.1.0
+  README walk. `.eclref` stays pinned to v1.0; this is a v1.0-and-v2.0-tolerant
+  reader posture, not a v2.0-native upgrade.
 
 ### Fixed
 
