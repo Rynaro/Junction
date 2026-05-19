@@ -1,0 +1,24 @@
+{
+  "thread_id": "test-thread-mcp-harness-run-001",
+  "tier": "trance",
+  "enforce": "fail-fast",
+  "executor": "shell",
+  "steps": [
+    {
+      "step_id": "S0",
+      "from": {"eidolon": "human",  "version": "n/a"},
+      "to":   {"eidolon": "atlas",  "version": "1.5.3"},
+      "performative": "REQUEST",
+      "edge_origin": "roster",
+      "objective": "Test plan recognition via harness.run."
+    },
+    {
+      "step_id": "S1",
+      "from": {"eidolon": "atlas",   "version": "1.5.3"},
+      "to":   {"eidolon": "spectra", "version": "4.3.3"},
+      "performative": "INFORM",
+      "edge_origin": "roster",
+      "objective": "Second step for multi-step plan test."
+    }
+  ]
+}

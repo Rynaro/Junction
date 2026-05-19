@@ -332,7 +332,7 @@ func loadAndVerifyEnvelope(envelopePath, contractsDir, enforce string) (*envelop
 			}
 		}
 
-		checkErr := reg.Check(env.From.Eidolon, env.To.Eidolon, env.Performative)
+		checkErr := reg.CheckWithOrigin(env.From.Eidolon, env.To.Eidolon, env.Performative, env.EdgeOrigin)
 		if checkErr != nil {
 			code := 67
 			if isPerformativeError(checkErr) {

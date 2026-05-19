@@ -237,6 +237,7 @@ func (p *Plan) ToChainSteps() []dispatch.ChainStep {
 			To:           s.To.Eidolon,
 			ToVersion:    s.To.Version,
 			Performative: s.Performative,
+			EdgeOrigin:   s.EdgeOrigin,
 		}
 		if i == 0 && s.Artifact != nil {
 			cs.InitialEnvelopePath = s.Artifact.Path
