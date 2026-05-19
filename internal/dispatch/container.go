@@ -114,13 +114,15 @@ type ContainerExecutor struct {
 
 	// ReasoningStep is the injectable host-LLM reasoning step between the
 	// assemble and package container invocations. If nil, a no-op pass-through
-	// is used (useful for legacy single-phase tests that pre-date F10-S1, and
-	// for environments where no reasoning provider is configured yet).
+	// is used (useful for legacy single-phase tests that pre-date F10-S1).
 	//
-	// Production callers (MCP server, §7.4) supply a real implementation that
-	// reads prompt-bundle.json and writes reasoning.json. Tests supply a canned
-	// function that copies a fixture reasoning.json. NG17 forbids any direct
-	// LLM API call here.
+	// Production callers (MCP server, §7.4) wire a reasoning.Provider via
+	// reasoning.NewReasoningStepFunc(p). Test callers may pass
+	// dispatch.NoopReasoningStep directly for legacy single-phase behaviour.
+	// Headless-CI callers without an MCP host should configure
+	// JUNCTION_REASONING_PROVIDER=shellout or =canned (see §5 of the v0.2 spec).
+	// NG17 forbids any direct LLM API call here — reasoning happens in the
+	// provider, not in dispatch.
 	ReasoningStep ReasoningStepFunc
 
 	// Journal is an optional trace journal. When non-nil, the executor records
@@ -307,13 +309,14 @@ func exitCodeFrom(err error) int {
 	return 1
 }
 
-// noopReasoningStep is the default ReasoningStepFunc used when ReasoningStep
-// is nil. It does nothing and returns nil — appropriate for legacy single-phase
-// tests and environments without a reasoning provider configured yet.
-// In production this is replaced by the MCP stdio server's reasoning hook.
-func noopReasoningStep(_ context.Context, _, _, _ string) error {
-	return nil
-}
+// NoopReasoningStep is the default ReasoningStepFunc used when ReasoningStep
+// is nil. It does nothing and returns nil — appropriate for legacy
+// single-phase tests and explicit `JUNCTION_REASONING_PROVIDER=none`.
+func NoopReasoningStep(_ context.Context, _, _, _ string) error { return nil }
+
+// noopReasoningStep is retained as an internal alias for the existing
+// nil-check path in Execute. Prefer NoopReasoningStep in new code.
+var noopReasoningStep = NoopReasoningStep
 
 // probeDaemon checks that the Docker daemon is reachable.
 func (c *ContainerExecutor) probeDaemon(ctx context.Context) error {

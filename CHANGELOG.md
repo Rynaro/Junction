@@ -11,6 +11,20 @@ targets — see `README.md` and the spec at
 ## [Unreleased]
 
 ### Added
+- **ReasoningStep provider (v0.2)** — new `internal/reasoning/` package wires
+  the host-LLM reasoning step between the assemble and package container phases.
+  Four providers selectable via `JUNCTION_REASONING_PROVIDER`: `mcp-sampling`
+  (issues `sampling/createMessage` to the MCP host), `canned` (fixture file,
+  test-mode), `shellout` (OQ-22 headless-CI; JSON-in/JSON-out CLI contract),
+  and `none` (default; preserves v0.1 single-phase behaviour). Config via
+  `JUNCTION_REASONING_PROVIDER`, `JUNCTION_REASONING_CANNED_PATH`,
+  `JUNCTION_REASONING_SHELLOUT_CMD`, `JUNCTION_REASONING_TIMEOUT` env vars;
+  typed config struct forward-compatible with F9-S1. Capability probe runs
+  per-call in the MCP server; fail-fast error when `sampling` capability absent.
+  Atomic `reasoning.json` write (temp-file + rename). `internal/mcp/server.go`
+  gains server-initiated request support (`SendRequest`, capability cache,
+  read-loop demuxer). `internal/dispatch.NoopReasoningStep` exported.
+  <!-- IDG: expand prose for [0.2.0] entry when the release is cut -->
 
 ### Fixed
 - Plan dispatch (`junction run --plan`) now correctly threads each step's

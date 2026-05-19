@@ -59,10 +59,31 @@ const (
 
 // InitializeParams mirrors the MCP 2025-03-26 initialize request params.
 type InitializeParams struct {
-	ProtocolVersion string     `json:"protocolVersion"`
-	ClientInfo      ClientInfo `json:"clientInfo"`
-	Capabilities    struct{}   `json:"capabilities"`
+	ProtocolVersion string             `json:"protocolVersion"`
+	ClientInfo      ClientInfo         `json:"clientInfo"`
+	Capabilities    ClientCapabilities `json:"capabilities"`
 }
+
+// ClientCapabilities declares which optional MCP capability sets the client
+// supports. Populated during the initialize handshake and cached by the server.
+type ClientCapabilities struct {
+	Sampling    *SamplingCapability    `json:"sampling,omitempty"`
+	Roots       *RootsCapability       `json:"roots,omitempty"`
+	Elicitation *ElicitationCapability `json:"elicitation,omitempty"`
+}
+
+// SamplingCapability signals that the client supports server-initiated
+// sampling/createMessage requests (empty object per MCP spec).
+type SamplingCapability struct{}
+
+// RootsCapability signals that the client supports roots operations.
+type RootsCapability struct {
+	ListChanged bool `json:"listChanged,omitempty"`
+}
+
+// ElicitationCapability signals that the client supports elicitation
+// (empty object per MCP spec).
+type ElicitationCapability struct{}
 
 // ClientInfo carries the MCP client name/version.
 type ClientInfo struct {

@@ -25,6 +25,7 @@ import (
 	"github.com/Rynaro/Junction/internal/dispatch"
 	"github.com/Rynaro/Junction/internal/envelope"
 	"github.com/Rynaro/Junction/internal/plan"
+	"github.com/Rynaro/Junction/internal/reasoning"
 	"github.com/Rynaro/Junction/internal/trace"
 )
 
@@ -243,6 +244,19 @@ func runPlanCmd(cfg runConfig) error {
 	}
 	mode := plan.ModeFromString(p.Executor)
 	innerExec := plan.SelectExecutor(mode, cfg.noContainer, opts)
+
+	// v0.2: wire the reasoning provider from env config.
+	// In the non-MCP run path, mcp-sampling is not available (no server).
+	reasoningCfg := reasoning.LoadConfigFromEnv()
+	reasoningProvider, reasoningErr := reasoning.NewProvider(reasoningCfg)
+	if reasoningErr != nil {
+		return fmt.Errorf("run: initialising reasoning provider: %w", reasoningErr)
+	}
+
+	// If the executor is a ContainerExecutor, inject the reasoning step.
+	if ce, ok := innerExec.(*dispatch.ContainerExecutor); ok {
+		ce.ReasoningStep = reasoning.NewReasoningStepFunc(reasoningProvider)
+	}
 
 	reg, _ := buildRegistry(cfg.contractsDir)
 	chain := &dispatch.ChainExecutor{

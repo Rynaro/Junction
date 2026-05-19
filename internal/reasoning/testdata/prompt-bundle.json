@@ -1,0 +1,20 @@
+{
+  "schema_version": "1.0",
+  "step_id": "S0",
+  "objective": "Analyse the supplied codebase and identify entry points.",
+  "system_prompt": "You are a senior software engineer. Be concise and direct.",
+  "user_messages": [
+    {
+      "role": "user",
+      "content": {
+        "type": "text",
+        "text": "Please analyse the following Go module and identify all HTTP handler entry points."
+      }
+    }
+  ],
+  "model_hints": ["claude-3-sonnet"],
+  "intelligence_priority": 0.8,
+  "speed_priority": 0.5,
+  "cost_priority": 0.3,
+  "max_tokens": 100
+}
