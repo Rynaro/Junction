@@ -33,9 +33,16 @@ type Registry struct {
 // NewRegistry constructs a Registry pre-populated with the four harness.*
 // tools wired to their handlers.
 func NewRegistry(reg *contract.Registry) *Registry {
+	return NewRegistryWithServer(reg, nil)
+}
+
+// NewRegistryWithServer constructs a Registry with a reference to the MCP
+// server (used by harness.run to inject the reasoning step). srv may be nil
+// for tests that do not need the reasoning integration.
+func NewRegistryWithServer(reg *contract.Registry, srv *Server) *Registry {
 	r := &Registry{handlers: make(map[string]HandlerFunc)}
 	r.register(planFromPromptDef(), handlePlanFromPrompt)
-	r.register(runDef(), makeRunHandler())
+	r.register(runDef(), makeRunHandler(srv))
 	r.register(verifyDef(), handleVerify)
 	r.register(injectDef(), handleInject)
 	_ = reg // held for future use when harness.inject gains contract validation
@@ -43,7 +50,16 @@ func NewRegistry(reg *contract.Registry) *Registry {
 }
 
 // NewRegistryDefault constructs a Registry using the embedded contract set.
+// Use NewRegistryDefaultWithServer to also wire the MCP server reference for
+// v0.2 reasoning integration.
 func NewRegistryDefault() (*Registry, error) {
+	return NewRegistryDefaultWithServer(nil)
+}
+
+// NewRegistryDefaultWithServer constructs a Registry using the embedded
+// contract set and a reference to the MCP server (used by harness.run to
+// inject the reasoning step in v0.2).
+func NewRegistryDefaultWithServer(srv *Server) (*Registry, error) {
 	reg, errs := contract.NewRegistryFromFS(contracts.Contracts, ".")
 	if len(errs) > 0 {
 		// Log warnings but continue — soft load errors should not block the
@@ -52,7 +68,7 @@ func NewRegistryDefault() (*Registry, error) {
 			fmt.Fprintf(os.Stderr, "mcp: contract load warning: %s\n", e)
 		}
 	}
-	return NewRegistry(reg), nil
+	return NewRegistryWithServer(reg, srv), nil
 }
 
 // register adds one tool to the registry.
@@ -150,7 +166,10 @@ func runDef() ToolDef {
 //
 // thread_id and trace_root are derived from the actual dispatch result — not
 // scraped from subprocess stdout.
-func makeRunHandler() HandlerFunc {
+//
+// v0.2: srv is passed so that runPlanInProcess can inject the server's
+// reasoning step into any ContainerExecutor. srv may be nil (backward compat).
+func makeRunHandler(srv *Server) HandlerFunc {
 	return func(ctx context.Context, args json.RawMessage) (json.RawMessage, error) {
 		var in runInput
 		if err := json.Unmarshal(args, &in); err != nil {
@@ -172,7 +191,7 @@ func makeRunHandler() HandlerFunc {
 		}
 		p, planErr := plan.Parse(bytes.NewReader(raw))
 		if planErr == nil {
-			return runPlanInProcess(ctx, p, in.PlanPath)
+			return runPlanInProcess(ctx, p, in.PlanPath, srv)
 		}
 
 		// Fall back to single-envelope shell-out (backward-compat).
@@ -183,7 +202,10 @@ func makeRunHandler() HandlerFunc {
 // runPlanInProcess executes a parsed plan.json in-process using
 // plan.SelectExecutor + dispatch.ChainExecutor. Returns thread_id and
 // trace_root from the actual dispatch result.
-func runPlanInProcess(ctx context.Context, p plan.Plan, planPath string) (json.RawMessage, error) {
+//
+// v0.2: srv is used to inject the reasoning step into ContainerExecutor.
+// srv may be nil (backward compat / non-MCP callers).
+func runPlanInProcess(ctx context.Context, p plan.Plan, planPath string, srv *Server) (json.RawMessage, error) {
 	traceRoot := trace.DefaultTraceRoot
 
 	reg, _ := contract.NewRegistryFromFS(contracts.Contracts, ".")
@@ -195,6 +217,15 @@ func runPlanInProcess(ctx context.Context, p plan.Plan, planPath string) (json.R
 	// MCP server always runs with --no-container=false; ShellExecutor is
 	// chosen if plan.executor == "shell", otherwise ContainerExecutor.
 	innerExec := plan.SelectExecutor(mode, false, opts)
+
+	// v0.2: inject the server's reasoning step into any ContainerExecutor.
+	if srv != nil {
+		if ce, ok := innerExec.(*dispatch.ContainerExecutor); ok {
+			if fn := srv.ReasoningStep(); fn != nil {
+				ce.ReasoningStep = fn
+			}
+		}
+	}
 
 	chain := &dispatch.ChainExecutor{
 		Executor:      innerExec,

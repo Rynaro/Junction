@@ -1,0 +1,23 @@
+{
+  "messages": [
+    {
+      "role": "user",
+      "content": {
+        "type": "text",
+        "text": "Please analyse the following Go module and identify all HTTP handler entry points."
+      }
+    }
+  ],
+  "modelPreferences": {
+    "hints": [
+      {
+        "name": "claude-3-sonnet"
+      }
+    ],
+    "intelligencePriority": 0.8,
+    "speedPriority": 0.5,
+    "costPriority": 0.3
+  },
+  "systemPrompt": "Analyse the supplied codebase and identify entry points.\n\nYou are a senior software engineer. Be concise and direct.",
+  "maxTokens": 100
+}
