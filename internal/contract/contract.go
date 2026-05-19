@@ -28,7 +28,30 @@ var (
 	// ErrPerformativeNotAllowed is returned when the performative is not in
 	// the contract's allowed list for this edge. Exit code 68.
 	ErrPerformativeNotAllowed = errors.New("ecl: performative not allowed for this edge")
+
+	// ErrPerformativeUnknown is returned when the performative is not in the
+	// global ECL closed set of 10 (spec §2). Used by CheckWithOrigin for
+	// implicit edges where per-edge whitelist is bypassed.
+	ErrPerformativeUnknown = errors.New("ecl: performative not in global closed set")
 )
+
+// globalPerformatives is the closed set of 10 ECL performatives (spec §2,
+// performative.v1.json). This mirrors the validPerformatives map in
+// internal/envelope/envelope.go — that package is not imported here to avoid
+// a circular dependency (envelope → schemas; contract is schema-agnostic).
+// If the ECL spec revision adds/removes performatives, update both maps.
+var globalPerformatives = map[string]bool{
+	"REQUEST":     true,
+	"INFORM":      true,
+	"PROPOSE":     true,
+	"CRITIQUE":    true,
+	"DECIDE":      true,
+	"DELEGATE":    true,
+	"ACKNOWLEDGE": true,
+	"ESCALATE":    true,
+	"RESUME":      true,
+	"REFUSE":      true,
+}
 
 // Contract is the parsed representation of a single directed-edge YAML file.
 // Field names mirror the handoff-contract.v1.json schema.
@@ -176,9 +199,9 @@ func (r *Registry) Lookup(from, to string) (*Contract, error) {
 }
 
 // CheckEdge runs the L3 (edge exists) check only.
+// For edge_origin-aware behaviour use CheckWithOrigin.
 func (r *Registry) CheckEdge(from, to string) error {
-	_, err := r.Lookup(from, to)
-	return err
+	return r.CheckWithOrigin(from, to, "", "")
 }
 
 // CheckPerformative runs the L4 (performative allowed) check on an already-
@@ -195,12 +218,55 @@ func CheckPerformative(c *Contract, performative string) error {
 
 // Check performs both L3 and L4 checks for the given (from, to, performative)
 // triple. It is the primary entry point for contract validation.
+//
+// Check delegates to CheckWithOrigin with edgeOrigin="" (roster behaviour).
+// For edge_origin-aware handling (e.g. implicit edges), call CheckWithOrigin
+// directly.
 func (r *Registry) Check(from, to, performative string) error {
-	c, err := r.Lookup(from, to)
-	if err != nil {
-		return err
+	return r.CheckWithOrigin(from, to, performative, "")
+}
+
+// CheckWithOrigin runs L3 + L4 checks with edge_origin awareness.
+//
+// edgeOrigin controls L3 behaviour:
+//
+//   - "" (empty), "roster", or "composition": standard roster lookup (current
+//     Check behaviour). L3 requires a contract YAML for the (from, to) edge.
+//     L4 validates the performative against the per-edge whitelist.
+//
+//   - "implicit": L3 is skipped — no roster contract YAML is required for the
+//     (from, to) edge. L4 still validates the performative against the global
+//     ECL closed set of 10 (spec §2). This is the correct behaviour for
+//     terminal Eidolon→human envelopes and any future implicit edges.
+//
+// "composition" is accepted as an alias for roster behaviour for now;
+// full composition semantics are a future follow-up per spec issue #23.
+func (r *Registry) CheckWithOrigin(from, to, performative, edgeOrigin string) error {
+	switch edgeOrigin {
+	case "implicit":
+		// L3: skip — no contract required for implicit edges.
+		// L4: validate against the global closed set only.
+		if performative == "" {
+			// Edge-only check (no performative supplied); always passes for implicit.
+			return nil
+		}
+		if !globalPerformatives[performative] {
+			return fmt.Errorf("%w: %q", ErrPerformativeUnknown, performative)
+		}
+		return nil
+
+	default:
+		// roster / composition / "" — standard L3 + L4 via contract lookup.
+		c, err := r.Lookup(from, to)
+		if err != nil {
+			return err
+		}
+		if performative == "" {
+			// Edge-only check (CheckEdge path); stop after L3.
+			return nil
+		}
+		return CheckPerformative(c, performative)
 	}
-	return CheckPerformative(c, performative)
 }
 
 // Size returns the number of contracts currently loaded in the registry.

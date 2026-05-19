@@ -44,6 +44,11 @@ type ChainStep struct {
 	// Performative is the ECL performative for this edge (e.g. "REQUEST", "PROPOSE").
 	Performative string
 
+	// EdgeOrigin is the ECL edge_origin value for this step ("roster",
+	// "implicit", "composition", or ""). Passed to CheckWithOrigin so that
+	// implicit edges (e.g. Eidolon→human terminals) bypass L3 contract lookup.
+	EdgeOrigin string
+
 	// InitialEnvelopePath is the input envelope path for this step.
 	// If empty (for steps after the first), the previous step's output envelope
 	// is used automatically.
@@ -94,9 +99,9 @@ func (c *ChainExecutor) Execute(ctx context.Context, steps []ChainStep) (ChainRe
 	prevOutputEnvelope := ""
 
 	for i, step := range steps {
-		// Contract check (L3/L4) before dispatch.
+		// Contract check (L3/L4) before dispatch, with edge_origin awareness.
 		if c.Registry != nil && step.From != "" && step.To != "" {
-			if err := c.Registry.Check(step.From, step.To, step.Performative); err != nil {
+			if err := c.Registry.CheckWithOrigin(step.From, step.To, step.Performative, step.EdgeOrigin); err != nil {
 				return chainResult, fmt.Errorf("%w: step %d (%s) — %v",
 					ErrChainContractViolation, i, step.StepID, err)
 			}

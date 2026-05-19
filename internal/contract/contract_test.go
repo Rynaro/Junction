@@ -5,7 +5,9 @@ package contract_test
 // GIVEN/WHEN/THEN anchors match spec story S2 acceptance criteria.
 
 import (
+	"encoding/json"
 	"errors"
+	"os"
 	"path/filepath"
 	"runtime"
 	"testing"
@@ -195,6 +197,88 @@ func TestCheckPerformative_Standalone(t *testing.T) {
 		t.Error("CheckPerformative(REFUSE) = nil, want error")
 	} else if !errors.Is(err, contract.ErrPerformativeNotAllowed) {
 		t.Errorf("CheckPerformative(REFUSE) = %v, want ErrPerformativeNotAllowed", err)
+	}
+}
+
+// ─── Issue #23: CheckWithOrigin — edge_origin awareness ──────────────────────
+
+// Test 1: edge_origin "implicit" + unknown (from,to) + valid performative → passes.
+// Regression fixture: real-world idg→human terminal envelope (no roster contract exists).
+func TestCheckWithOrigin_Implicit_UnknownEdge_ValidPerformative(t *testing.T) {
+	r := embeddedRegistry(t)
+	// idg→human has no roster contract YAML; INFORM is a valid global performative.
+	if err := r.CheckWithOrigin("idg", "human", "INFORM", "implicit"); err != nil {
+		t.Errorf("CheckWithOrigin(idg, human, INFORM, implicit) = %v, want nil", err)
+	}
+}
+
+// Test 1b: same test using the testdata fixture — loads, parses, and calls
+// CheckWithOrigin mirroring the real-world verify path.
+func TestCheckWithOrigin_Implicit_FixtureEnvelope(t *testing.T) {
+	const fixturePath = "testdata/idg-to-human-implicit.envelope.json"
+	data, err := os.ReadFile(fixturePath)
+	if err != nil {
+		t.Fatalf("reading fixture: %v", err)
+	}
+	var env struct {
+		From struct {
+			Eidolon string `json:"eidolon"`
+		} `json:"from"`
+		To struct {
+			Eidolon string `json:"eidolon"`
+		} `json:"to"`
+		Performative string `json:"performative"`
+		EdgeOrigin   string `json:"edge_origin"`
+	}
+	if err := json.Unmarshal(data, &env); err != nil {
+		t.Fatalf("parsing fixture: %v", err)
+	}
+
+	r := embeddedRegistry(t)
+	if err := r.CheckWithOrigin(env.From.Eidolon, env.To.Eidolon, env.Performative, env.EdgeOrigin); err != nil {
+		t.Errorf("CheckWithOrigin from fixture = %v, want nil", err)
+	}
+}
+
+// Test 2: edge_origin "roster" (or unset) + unknown (from,to) → fails L3 with
+// ErrEdgeNotDeclared. Regression guard: roster behaviour must be unchanged.
+func TestCheckWithOrigin_Roster_UnknownEdge_FailsL3(t *testing.T) {
+	r := embeddedRegistry(t)
+	// idg→human has no roster contract — must fail with ErrEdgeNotDeclared.
+	for _, origin := range []string{"roster", ""} {
+		err := r.CheckWithOrigin("idg", "human", "INFORM", origin)
+		if err == nil {
+			t.Errorf("CheckWithOrigin(idg, human, INFORM, %q) = nil, want ErrEdgeNotDeclared", origin)
+			continue
+		}
+		if !errors.Is(err, contract.ErrEdgeNotDeclared) {
+			t.Errorf("CheckWithOrigin(idg, human, INFORM, %q) = %v, want ErrEdgeNotDeclared", origin, err)
+		}
+	}
+}
+
+// Test 3: edge_origin "implicit" + invalid performative → fails L4 against global enum.
+func TestCheckWithOrigin_Implicit_InvalidPerformative_FailsL4(t *testing.T) {
+	r := embeddedRegistry(t)
+	err := r.CheckWithOrigin("idg", "human", "FOO", "implicit")
+	if err == nil {
+		t.Fatal("CheckWithOrigin(idg, human, FOO, implicit) = nil, want ErrPerformativeUnknown")
+	}
+	if !errors.Is(err, contract.ErrPerformativeUnknown) {
+		t.Errorf("CheckWithOrigin(idg, human, FOO, implicit) = %v, want ErrPerformativeUnknown", err)
+	}
+}
+
+// Test 4: edge_origin "implicit" + valid performative + known (from,to) pair →
+// passes. For implicit edges the per-edge whitelist is bypassed even when a
+// contract exists for the edge.
+func TestCheckWithOrigin_Implicit_KnownEdge_BypassesWhitelist(t *testing.T) {
+	r := embeddedRegistry(t)
+	// apivr→idg exists in the roster; its whitelist is PROPOSE and INFORM.
+	// ESCALATE is NOT in that whitelist but IS in the global set — implicit
+	// edges must bypass the per-edge whitelist.
+	if err := r.CheckWithOrigin("apivr", "idg", "ESCALATE", "implicit"); err != nil {
+		t.Errorf("CheckWithOrigin(apivr, idg, ESCALATE, implicit) = %v, want nil (implicit bypasses per-edge whitelist)", err)
 	}
 }
 

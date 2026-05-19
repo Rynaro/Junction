@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"os"
+	"path/filepath"
 	"strings"
 	"testing"
 
@@ -244,6 +245,73 @@ func TestToolsCall_Run_NonexistentFile(t *testing.T) {
 	// junction run --envelope /nonexistent exits non-zero → isError:true
 	if result["isError"] != true {
 		t.Errorf("isError = %v, want true for non-existent envelope file", result["isError"])
+	}
+}
+
+// TestToolsCall_Run_MultiStepPlan exercises the plan.json detection path in
+// harness.run. A valid two-step plan.json is passed; the handler must recognise
+// it as a plan (not an envelope) and attempt in-process dispatch. Since no
+// Eidolon entrypoints are installed in the test environment, the dispatch step
+// will fail — but the error must come from the dispatch chain (not from an
+// unknown-envelope-format error) and thread_id must NOT be scraped from stdout.
+//
+// Acceptance criteria per issue #22:
+//   - isError:true is acceptable (no eidolons installed in test env).
+//   - The response must NOT contain a thread_id derived from stdout scraping.
+//   - The plan fixture at testdata/two-step-plan.json is used; it has thread_id
+//     "test-thread-mcp-harness-run-001" so any scraping would produce that value
+//     only if the handler reads the plan, not stdout.
+func TestToolsCall_Run_MultiStepPlan(t *testing.T) {
+	planPath := "testdata/two-step-plan.json"
+	if _, err := os.Stat(planPath); err != nil {
+		t.Skipf("fixture %s not found: %v", planPath, err)
+	}
+
+	srv := newTestServer(t)
+	absPath, err := filepath.Abs(planPath)
+	if err != nil {
+		t.Fatalf("resolving fixture path: %v", err)
+	}
+	req := fmt.Sprintf(
+		`{"jsonrpc":"2.0","id":22,"method":"tools/call","params":{"name":"harness.run","arguments":{"plan_path":%q}}}`,
+		absPath,
+	)
+	got := roundtrip(t, srv, req)
+
+	result, ok := got["result"].(map[string]interface{})
+	if !ok {
+		t.Fatalf("result not a map: %T", got["result"])
+	}
+
+	// Extract the content text regardless of isError.
+	var payloadText string
+	if content, ok := result["content"].([]interface{}); ok && len(content) > 0 {
+		if item, ok := content[0].(map[string]interface{}); ok {
+			payloadText, _ = item["text"].(string)
+		}
+	}
+
+	// Success path: plan dispatched and completed (possible in a fully wired env).
+	if result["isError"] == false {
+		// thread_id must be present in the payload and match the plan.
+		var payload map[string]interface{}
+		if err := json.Unmarshal([]byte(payloadText), &payload); err != nil {
+			t.Fatalf("success payload not JSON: %v", err)
+		}
+		tid, _ := payload["thread_id"].(string)
+		if tid != "test-thread-mcp-harness-run-001" {
+			t.Errorf("thread_id = %q, want test-thread-mcp-harness-run-001 (from plan, not stdout scraping)", tid)
+		}
+		return
+	}
+
+	// Error path (expected in test env — no eidolons installed):
+	// The error must originate from the dispatch chain, not from a
+	// "junction run exited" error that would indicate envelope-mode fallback.
+	// Envelope-mode fallback would produce "junction run exited N: ..." text;
+	// plan-dispatch errors come from the chain executor.
+	if strings.Contains(payloadText, "junction run exited") {
+		t.Errorf("error text looks like envelope-mode fallback: %q — plan.json was not recognised", payloadText)
 	}
 }
 

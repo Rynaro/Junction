@@ -1,16 +1,20 @@
 package mcp
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
 	"fmt"
 	"os"
 	"os/exec"
+	"path/filepath"
 	"strings"
 
 	"github.com/Rynaro/Junction/internal/contract"
 	"github.com/Rynaro/Junction/internal/contracts"
+	"github.com/Rynaro/Junction/internal/dispatch"
 	"github.com/Rynaro/Junction/internal/envelope"
+	"github.com/Rynaro/Junction/internal/plan"
 	"github.com/Rynaro/Junction/internal/trace"
 )
 
@@ -138,16 +142,14 @@ func runDef() ToolDef {
 	}
 }
 
-// makeRunHandler returns a handler that invokes `junction run --envelope` via
-// os/exec. Using os/exec rather than a direct internal call avoids a circular
-// import (cmd/junction cannot import internal/mcp if internal/mcp imports
-// cmd/junction). The same binary that serves MCP is re-invoked for the run
-// subcommand.
+// makeRunHandler returns a handler that executes a Junction plan or single
+// envelope. It uses shape detection: if the file at plan_path can be parsed
+// as a plan.json (§7.5), it dispatches in-process via plan.Parse +
+// dispatch.ChainExecutor; otherwise it falls back to invoking the junction
+// binary with --envelope for single-envelope back-compat.
 //
-// Note: internal/plan does not exist yet (F9-S0 is a separate story). When
-// F9-S0 lands and internal/plan is available, this handler can be updated to
-// call plan.Parse + the dispatch chain directly, removing the os/exec
-// indirection.
+// thread_id and trace_root are derived from the actual dispatch result — not
+// scraped from subprocess stdout.
 func makeRunHandler() HandlerFunc {
 	return func(ctx context.Context, args json.RawMessage) (json.RawMessage, error) {
 		var in runInput
@@ -158,71 +160,117 @@ func makeRunHandler() HandlerFunc {
 			return nil, fmt.Errorf("harness.run: plan_path is required")
 		}
 
-		// Fast-fail: verify the envelope/plan file exists before invoking
-		// the subprocess. This avoids confusing errors from the shell executor
-		// and makes the missing-file error deterministic.
+		// Fast-fail: verify the file exists before any further processing.
 		if _, statErr := os.Stat(in.PlanPath); statErr != nil {
 			return nil, fmt.Errorf("harness.run: plan_path %q: %w", in.PlanPath, statErr)
 		}
 
-		// Resolve the junction binary path from the running process.
-		self, err := os.Executable()
+		// Shape detection: try to parse as plan.json; on success dispatch in-process.
+		raw, err := os.ReadFile(in.PlanPath)
 		if err != nil {
-			return nil, fmt.Errorf("harness.run: cannot resolve binary path: %w", err)
+			return nil, fmt.Errorf("harness.run: reading file: %w", err)
+		}
+		p, planErr := plan.Parse(bytes.NewReader(raw))
+		if planErr == nil {
+			return runPlanInProcess(ctx, p, in.PlanPath)
 		}
 
-		// harness.run v0.1: junction's current `run` subcommand takes an
-		// --envelope flag, not a --plan flag (F9-S0 not merged). We invoke
-		// the binary with the envelope path derived from plan_path. If the
-		// caller passed a plan.json, we surface a clear error rather than
-		// silently failing.
-		//
-		// TODO(F9-S0): when internal/plan lands, replace this with a direct
-		// call to plan.Parse + dispatch chain, and accept a proper plan.json.
-		cmd := exec.CommandContext(ctx, self, "run", "--envelope", in.PlanPath)
-		cmd.Env = os.Environ()
-		out, runErr := cmd.CombinedOutput()
-
-		exitCode := 0
-		if runErr != nil {
-			if exitErr, ok := runErr.(*exec.ExitError); ok {
-				exitCode = exitErr.ExitCode()
-			} else {
-				return nil, fmt.Errorf("harness.run: exec: %w", runErr)
-			}
-		}
-
-		result := map[string]interface{}{
-			"exit_code": exitCode,
-			"output":    strings.TrimSpace(string(out)),
-			"plan_path": in.PlanPath,
-		}
-		if exitCode != 0 {
-			return nil, fmt.Errorf("harness.run: junction run exited %d: %s", exitCode, strings.TrimSpace(string(out)))
-		}
-
-		// Extract thread_id from output if present (junction run prints
-		// "junction run: dispatched to <eidolon> (thread <id>) — trace at <path>").
-		threadID := ""
-		traceRoot := trace.DefaultTraceRoot
-		for _, line := range strings.Split(string(out), "\n") {
-			if strings.Contains(line, "(thread ") {
-				start := strings.Index(line, "(thread ") + len("(thread ")
-				end := strings.Index(line[start:], ")")
-				if end > 0 {
-					threadID = line[start : start+end]
-				}
-			}
-			if strings.Contains(line, "trace at ") {
-				idx := strings.Index(line, "trace at ") + len("trace at ")
-				traceRoot = strings.TrimSpace(line[idx:])
-			}
-		}
-
-		result["thread_id"] = threadID
-		result["trace_root"] = traceRoot
-		return mustMarshal(result), nil
+		// Fall back to single-envelope shell-out (backward-compat).
+		return runEnvelopeShellOut(ctx, in.PlanPath)
 	}
+}
+
+// runPlanInProcess executes a parsed plan.json in-process using
+// plan.SelectExecutor + dispatch.ChainExecutor. Returns thread_id and
+// trace_root from the actual dispatch result.
+func runPlanInProcess(ctx context.Context, p plan.Plan, planPath string) (json.RawMessage, error) {
+	traceRoot := trace.DefaultTraceRoot
+
+	reg, _ := contract.NewRegistryFromFS(contracts.Contracts, ".")
+	opts := plan.ExecutorOptions{
+		ProjectDir: cwd(),
+		CacheDir:   eidolonsCacheDirMCP(),
+	}
+	mode := plan.ModeFromString(p.Executor)
+	// MCP server always runs with --no-container=false; ShellExecutor is
+	// chosen if plan.executor == "shell", otherwise ContainerExecutor.
+	innerExec := plan.SelectExecutor(mode, false, opts)
+
+	chain := &dispatch.ChainExecutor{
+		Executor:      innerExec,
+		Registry:      reg,
+		ThreadID:      p.ThreadID,
+		BaseOutputDir: filepath.Join(traceRoot, p.ThreadID),
+	}
+
+	steps := p.ToChainSteps()
+	_, chainErr := chain.Execute(ctx, steps)
+
+	actualTraceRoot := filepath.Join(traceRoot, p.ThreadID)
+	result := map[string]interface{}{
+		"plan_path":  planPath,
+		"thread_id":  p.ThreadID,
+		"trace_root": actualTraceRoot,
+		"step_count": len(steps),
+	}
+	if chainErr != nil {
+		return nil, fmt.Errorf("harness.run: plan chain: %w", chainErr)
+	}
+	return mustMarshal(result), nil
+}
+
+// runEnvelopeShellOut invokes the junction binary with --envelope for the
+// single-envelope back-compat path.
+func runEnvelopeShellOut(ctx context.Context, envelopePath string) (json.RawMessage, error) {
+	self, err := os.Executable()
+	if err != nil {
+		return nil, fmt.Errorf("harness.run: cannot resolve binary path: %w", err)
+	}
+
+	cmd := exec.CommandContext(ctx, self, "run", "--envelope", envelopePath)
+	cmd.Env = os.Environ()
+	out, runErr := cmd.CombinedOutput()
+
+	exitCode := 0
+	if runErr != nil {
+		if exitErr, ok := runErr.(*exec.ExitError); ok {
+			exitCode = exitErr.ExitCode()
+		} else {
+			return nil, fmt.Errorf("harness.run: exec: %w", runErr)
+		}
+	}
+	if exitCode != 0 {
+		return nil, fmt.Errorf("harness.run: junction run exited %d: %s", exitCode, strings.TrimSpace(string(out)))
+	}
+
+	// For single-envelope mode, thread_id and trace_root are not available
+	// in-process (we don't parse the envelope here to avoid duplication with
+	// the subprocess). Return the defaults.
+	result := map[string]interface{}{
+		"exit_code":  exitCode,
+		"plan_path":  envelopePath,
+		"thread_id":  "",
+		"trace_root": trace.DefaultTraceRoot,
+	}
+	return mustMarshal(result), nil
+}
+
+// cwd returns the current working directory for executor construction.
+func cwd() string {
+	d, err := os.Getwd()
+	if err != nil {
+		return "."
+	}
+	return d
+}
+
+// eidolonsCacheDirMCP returns the default ~/.eidolons/cache directory.
+func eidolonsCacheDirMCP() string {
+	home, err := os.UserHomeDir()
+	if err != nil {
+		return ""
+	}
+	return filepath.Join(home, ".eidolons", "cache")
 }
 
 // ─── Tool 3: harness.verify ──────────────────────────────────────────────────
@@ -286,12 +334,12 @@ func handleVerify(_ context.Context, args json.RawMessage) (json.RawMessage, err
 			errs = append(errs, "L2: "+intErr.Error())
 		}
 
-		// L3+L4 — contract registry.
+		// L3+L4 — contract registry (edge_origin aware).
 		reg, loadErrs := contract.NewRegistryFromFS(contracts.Contracts, ".")
 		for _, le := range loadErrs {
 			errs = append(errs, "contract-load: "+le.Error())
 		}
-		if checkErr := reg.Check(env.From.Eidolon, env.To.Eidolon, env.Performative); checkErr != nil {
+		if checkErr := reg.CheckWithOrigin(env.From.Eidolon, env.To.Eidolon, env.Performative, env.EdgeOrigin); checkErr != nil {
 			errs = append(errs, "L3/L4: "+checkErr.Error())
 		}
 	}

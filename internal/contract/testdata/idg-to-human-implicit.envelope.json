@@ -1,0 +1,36 @@
+{
+  "envelope_version": "2.0",
+  "message_id": "c2bb8c0d-04a6-45cb-818e-6162e4d11a7e",
+  "thread_id": "46aa005a-7b5a-4f93-8dd7-ebeb8450d555",
+  "parent_id": "fe1f22ea-34c3-4ffb-bb9a-039885552464",
+  "from": { "eidolon": "idg",   "version": "1.2.3" },
+  "to":   { "eidolon": "human", "version": "n/a" },
+  "performative": "INFORM",
+  "edge_origin": "implicit",
+  "objective": "Terminal chronicle for TRANCE thread 46aa005a — atlas-aci#11 shipped via PR #13.",
+  "artifact": {
+    "kind": "chronicle",
+    "schema_version": "1.0",
+    "path": "chronicle.md",
+    "sha256": "5fe45385ed44ee1484b116db159faa30c282db7af9ca36f8412d65faa5c6aa23",
+    "size_bytes": 3612
+  },
+  "context_delta": {
+    "token_budget": 4000,
+    "tokens_used": 800,
+    "input_handles": ["prompt.md", "scout-report.md", "spec.md", "apivr-completion-report.md"],
+    "summary": "IDG chronicle of the full TRANCE chain. Terminal envelope; no downstream Eidolon."
+  },
+  "constraints": { "trust_level": "standard" },
+  "confidence": 1.0,
+  "integrity": {
+    "method": "sha256",
+    "value": "5fe45385ed44ee1484b116db159faa30c282db7af9ca36f8412d65faa5c6aa23"
+  },
+  "trace": {
+    "ts": "2026-05-19T19:39:10Z",
+    "host": "claude-code",
+    "model": "claude-haiku-4-5-20251001",
+    "tier": "trance"
+  }
+}
