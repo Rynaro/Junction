@@ -3,6 +3,7 @@ package reasoning_test
 // canned_test.go — G5: canned provider error paths
 
 import (
+	"context"
 	"os"
 	"path/filepath"
 	"testing"
@@ -68,7 +69,7 @@ func TestCannedProvider_ReadsFromTestdata(t *testing.T) {
 	if err != nil {
 		t.Fatalf("NewProvider: %v", err)
 	}
-	r, err := p.Reason(nil, canonicalBundle(t))
+	r, err := p.Reason(context.Background(), canonicalBundle(t))
 	if err != nil {
 		t.Fatalf("Reason: %v", err)
 	}

@@ -172,7 +172,7 @@ func TestSamplingE2E_TwoPhaseRoundTrip(t *testing.T) {
 				// Capture the params for assertion C.
 				if p, ok := msg["params"]; ok {
 					pb, _ := json.Marshal(p)
-					json.Unmarshal(pb, &capturedParams)
+					_ = json.Unmarshal(pb, &capturedParams)
 				}
 
 				// Respond with the canned sampling result.
