@@ -38,6 +38,7 @@ func contractsDir() string {
 // ─── S2: Embedded registry loads without errors ───────────────────────────────
 
 func TestRegistry_EmbeddedLoads(t *testing.T) {
+	t.Parallel()
 	r := embeddedRegistry(t)
 	// Minimal sanity: at least the 18 Eidolon-to-Eidolon contracts + 6 human-edge.
 	if r.Size() < 18 {
@@ -51,6 +52,7 @@ func TestRegistry_EmbeddedLoads(t *testing.T) {
 // WHEN an envelope with PROPOSE is checked
 // THEN Check returns nil.
 func TestCheck_SpectraToApivr_PROPOSE(t *testing.T) {
+	t.Parallel()
 	r := embeddedRegistry(t)
 	if err := r.Check("spectra", "apivr", "PROPOSE"); err != nil {
 		t.Errorf("Check(spectra, apivr, PROPOSE) = %v, want nil", err)
@@ -61,6 +63,7 @@ func TestCheck_SpectraToApivr_PROPOSE(t *testing.T) {
 // WHEN performatives PROPOSE, INFORM, REFUSE are each checked
 // THEN all return nil.
 func TestCheck_AtlasToSpectra_AllowedPerformatives(t *testing.T) {
+	t.Parallel()
 	r := embeddedRegistry(t)
 	for _, p := range []string{"PROPOSE", "INFORM", "REFUSE"} {
 		if err := r.Check("atlas", "spectra", p); err != nil {
@@ -75,6 +78,7 @@ func TestCheck_AtlasToSpectra_AllowedPerformatives(t *testing.T) {
 // WHEN an envelope with from:human, to:atlas, performative:REQUEST is checked
 // THEN Check returns nil.
 func TestCheck_HumanToAtlas_REQUEST(t *testing.T) {
+	t.Parallel()
 	r := embeddedRegistry(t)
 	if err := r.Check("human", "atlas", "REQUEST"); err != nil {
 		t.Errorf("Check(human, atlas, REQUEST) = %v, want nil", err)
@@ -85,6 +89,7 @@ func TestCheck_HumanToAtlas_REQUEST(t *testing.T) {
 // WHEN each allowed performative is checked (REQUEST, INFORM, CRITIQUE, REFUSE, ACKNOWLEDGE, ESCALATE)
 // THEN all return nil.
 func TestCheck_HumanEdge_AllSixEidolons(t *testing.T) {
+	t.Parallel()
 	r := embeddedRegistry(t)
 	eidolons := []string{"atlas", "spectra", "apivr", "idg", "forge", "vigil"}
 	allowed := []string{"REQUEST", "INFORM", "CRITIQUE", "REFUSE", "ACKNOWLEDGE", "ESCALATE"}
@@ -104,6 +109,7 @@ func TestCheck_HumanEdge_AllSixEidolons(t *testing.T) {
 // WHEN checked
 // THEN Check returns ErrPerformativeNotAllowed.
 func TestCheck_HumanToAtlas_DECIDE_Forbidden(t *testing.T) {
+	t.Parallel()
 	r := embeddedRegistry(t)
 	err := r.Check("human", "atlas", "DECIDE")
 	if err == nil {
@@ -118,6 +124,7 @@ func TestCheck_HumanToAtlas_DECIDE_Forbidden(t *testing.T) {
 // WHEN each is checked on any human-edge contract
 // THEN all return ErrPerformativeNotAllowed.
 func TestCheck_HumanEdge_ForbiddenPerformatives(t *testing.T) {
+	t.Parallel()
 	r := embeddedRegistry(t)
 	forbidden := []string{"PROPOSE", "DECIDE", "DELEGATE", "RESUME"}
 	for _, p := range forbidden {
@@ -138,6 +145,7 @@ func TestCheck_HumanEdge_ForbiddenPerformatives(t *testing.T) {
 // WHEN such an envelope is checked under fail-fast
 // THEN Check returns ErrEdgeNotDeclared with the searched path.
 func TestCheck_EdgeNotDeclared(t *testing.T) {
+	t.Parallel()
 	r := embeddedRegistry(t)
 	err := r.Check("forge", "human", "PROPOSE")
 	if err == nil {
@@ -154,6 +162,7 @@ func TestCheck_EdgeNotDeclared(t *testing.T) {
 // WHEN an ESCALATE envelope is checked on that edge
 // THEN Check returns ErrPerformativeNotAllowed.
 func TestCheck_PerformativeNotAllowed_OnEidolonEdge(t *testing.T) {
+	t.Parallel()
 	r := embeddedRegistry(t)
 	// apivr → idg only allows PROPOSE and INFORM; ESCALATE should be rejected.
 	err := r.Check("apivr", "idg", "ESCALATE")
@@ -168,6 +177,7 @@ func TestCheck_PerformativeNotAllowed_OnEidolonEdge(t *testing.T) {
 // ─── NewRegistry: disk-based loading ─────────────────────────────────────────
 
 func TestNewRegistry_FromDisk(t *testing.T) {
+	t.Parallel()
 	r, errs := contract.NewRegistry(contractsDir())
 	if len(errs) > 0 {
 		t.Fatalf("NewRegistry errors: %v", errs)
@@ -184,6 +194,7 @@ func TestNewRegistry_FromDisk(t *testing.T) {
 // ─── CheckPerformative standalone ────────────────────────────────────────────
 
 func TestCheckPerformative_Standalone(t *testing.T) {
+	t.Parallel()
 	c := &contract.Contract{
 		From:                 "a",
 		To:                   "b",
@@ -205,6 +216,7 @@ func TestCheckPerformative_Standalone(t *testing.T) {
 // Test 1: edge_origin "implicit" + unknown (from,to) + valid performative → passes.
 // Regression fixture: real-world idg→human terminal envelope (no roster contract exists).
 func TestCheckWithOrigin_Implicit_UnknownEdge_ValidPerformative(t *testing.T) {
+	t.Parallel()
 	r := embeddedRegistry(t)
 	// idg→human has no roster contract YAML; INFORM is a valid global performative.
 	if err := r.CheckWithOrigin("idg", "human", "INFORM", "implicit"); err != nil {
@@ -215,6 +227,7 @@ func TestCheckWithOrigin_Implicit_UnknownEdge_ValidPerformative(t *testing.T) {
 // Test 1b: same test using the testdata fixture — loads, parses, and calls
 // CheckWithOrigin mirroring the real-world verify path.
 func TestCheckWithOrigin_Implicit_FixtureEnvelope(t *testing.T) {
+	t.Parallel()
 	const fixturePath = "testdata/idg-to-human-implicit.envelope.json"
 	data, err := os.ReadFile(fixturePath)
 	if err != nil {
@@ -243,6 +256,7 @@ func TestCheckWithOrigin_Implicit_FixtureEnvelope(t *testing.T) {
 // Test 2: edge_origin "roster" (or unset) + unknown (from,to) → fails L3 with
 // ErrEdgeNotDeclared. Regression guard: roster behaviour must be unchanged.
 func TestCheckWithOrigin_Roster_UnknownEdge_FailsL3(t *testing.T) {
+	t.Parallel()
 	r := embeddedRegistry(t)
 	// idg→human has no roster contract — must fail with ErrEdgeNotDeclared.
 	for _, origin := range []string{"roster", ""} {
@@ -259,6 +273,7 @@ func TestCheckWithOrigin_Roster_UnknownEdge_FailsL3(t *testing.T) {
 
 // Test 3: edge_origin "implicit" + invalid performative → fails L4 against global enum.
 func TestCheckWithOrigin_Implicit_InvalidPerformative_FailsL4(t *testing.T) {
+	t.Parallel()
 	r := embeddedRegistry(t)
 	err := r.CheckWithOrigin("idg", "human", "FOO", "implicit")
 	if err == nil {
@@ -273,6 +288,7 @@ func TestCheckWithOrigin_Implicit_InvalidPerformative_FailsL4(t *testing.T) {
 // passes. For implicit edges the per-edge whitelist is bypassed even when a
 // contract exists for the edge.
 func TestCheckWithOrigin_Implicit_KnownEdge_BypassesWhitelist(t *testing.T) {
+	t.Parallel()
 	r := embeddedRegistry(t)
 	// apivr→idg exists in the roster; its whitelist is PROPOSE and INFORM.
 	// ESCALATE is NOT in that whitelist but IS in the global set — implicit
@@ -285,6 +301,7 @@ func TestCheckWithOrigin_Implicit_KnownEdge_BypassesWhitelist(t *testing.T) {
 // ─── Lookup ───────────────────────────────────────────────────────────────────
 
 func TestLookup_Found(t *testing.T) {
+	t.Parallel()
 	r := embeddedRegistry(t)
 	c, err := r.Lookup("spectra", "apivr")
 	if err != nil {
@@ -296,6 +313,7 @@ func TestLookup_Found(t *testing.T) {
 }
 
 func TestLookup_NotFound(t *testing.T) {
+	t.Parallel()
 	r := embeddedRegistry(t)
 	_, err := r.Lookup("nobody", "nobody")
 	if err == nil {

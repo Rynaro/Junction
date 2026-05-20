@@ -1,8 +1,9 @@
 #!/bin/sh
 # pre-push — runs make check before every push.
 #
-# Blocks the push if go vet, go test -race, or golangci-lint fails.
-# This mirrors CI exactly (see .github/workflows/ci.yml).
+# Blocks the push if go test -race, golangci-lint, or the examples static gate
+# fails. (`make check` depends on `lint-examples`, so the static gate runs as
+# part of check.) This mirrors CI exactly (see .github/workflows/ci.yml).
 #
 # One-time setup:
 #   git config core.hooksPath .githooks
@@ -15,11 +16,3 @@ set -e
 echo "[pre-push] running make check …"
 make check
 echo "[pre-push] check passed."
-
-# make check already depends on lint-examples (see Makefile), so the static
-# gate ran as part of check above. The explicit call below is belt-and-suspenders:
-# it ensures the gate is visible in the hook and survives any future refactor
-# that might decouple check from lint-examples.
-echo "[pre-push] running make lint-examples …"
-make lint-examples
-echo "[pre-push] lint-examples passed."

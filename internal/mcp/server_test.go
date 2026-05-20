@@ -69,6 +69,7 @@ func roundtripMulti(t *testing.T, srv *mcp.Server, reqs []string) []map[string]i
 // ─── Initialize handshake ─────────────────────────────────────────────────────
 
 func TestInitialize_Handshake(t *testing.T) {
+	t.Parallel()
 	srv := newTestServer(t)
 	req := `{"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolVersion":"2025-03-26","clientInfo":{"name":"test","version":"1.0"},"capabilities":{}}}`
 	got := roundtrip(t, srv, req)
@@ -107,6 +108,7 @@ func TestInitialize_Handshake(t *testing.T) {
 }
 
 func TestInitialize_NotificationNoResponse(t *testing.T) {
+	t.Parallel()
 	srv := newTestServer(t)
 	// Send initialize (id=1) + notifications/initialized (no id).
 	reqs := []string{
@@ -123,6 +125,7 @@ func TestInitialize_NotificationNoResponse(t *testing.T) {
 // ─── tools/list ──────────────────────────────────────────────────────────────
 
 func TestToolsList_ReturnsFourTools(t *testing.T) {
+	t.Parallel()
 	srv := newTestServer(t)
 	req := `{"jsonrpc":"2.0","id":2,"method":"tools/list","params":{}}`
 	got := roundtrip(t, srv, req)
@@ -168,6 +171,7 @@ func TestToolsList_ReturnsFourTools(t *testing.T) {
 }
 
 func TestToolsList_EachHasObjectInputSchema(t *testing.T) {
+	t.Parallel()
 	srv := newTestServer(t)
 	req := `{"jsonrpc":"2.0","id":3,"method":"tools/list","params":{}}`
 	got := roundtrip(t, srv, req)
@@ -192,6 +196,7 @@ func TestToolsList_EachHasObjectInputSchema(t *testing.T) {
 // ─── tools/call — harness.plan_from_prompt (stub) ────────────────────────────
 
 func TestToolsCall_PlanFromPrompt_Stub(t *testing.T) {
+	t.Parallel()
 	srv := newTestServer(t)
 	req := `{"jsonrpc":"2.0","id":10,"method":"tools/call","params":{"name":"harness.plan_from_prompt","arguments":{"prompt":"map the atlas dispatch path"}}}`
 	got := roundtrip(t, srv, req)
@@ -220,6 +225,7 @@ func TestToolsCall_PlanFromPrompt_Stub(t *testing.T) {
 // ─── tools/call — harness.run ────────────────────────────────────────────────
 
 func TestToolsCall_Run_MissingPlanPath(t *testing.T) {
+	t.Parallel()
 	srv := newTestServer(t)
 	req := `{"jsonrpc":"2.0","id":20,"method":"tools/call","params":{"name":"harness.run","arguments":{}}}`
 	got := roundtrip(t, srv, req)
@@ -234,6 +240,7 @@ func TestToolsCall_Run_MissingPlanPath(t *testing.T) {
 }
 
 func TestToolsCall_Run_NonexistentFile(t *testing.T) {
+	t.Parallel()
 	srv := newTestServer(t)
 	req := `{"jsonrpc":"2.0","id":21,"method":"tools/call","params":{"name":"harness.run","arguments":{"plan_path":"/nonexistent-plan-mcp-12345.json"}}}`
 	got := roundtrip(t, srv, req)
@@ -262,6 +269,7 @@ func TestToolsCall_Run_NonexistentFile(t *testing.T) {
 //     "test-thread-mcp-harness-run-001" so any scraping would produce that value
 //     only if the handler reads the plan, not stdout.
 func TestToolsCall_Run_MultiStepPlan(t *testing.T) {
+	t.Parallel()
 	planPath := "testdata/two-step-plan.json"
 	if _, err := os.Stat(planPath); err != nil {
 		t.Skipf("fixture %s not found: %v", planPath, err)
@@ -318,6 +326,7 @@ func TestToolsCall_Run_MultiStepPlan(t *testing.T) {
 // ─── tools/call — harness.verify ─────────────────────────────────────────────
 
 func TestToolsCall_Verify_MissingEnvelopePath(t *testing.T) {
+	t.Parallel()
 	srv := newTestServer(t)
 	req := `{"jsonrpc":"2.0","id":30,"method":"tools/call","params":{"name":"harness.verify","arguments":{}}}`
 	got := roundtrip(t, srv, req)
@@ -332,6 +341,7 @@ func TestToolsCall_Verify_MissingEnvelopePath(t *testing.T) {
 }
 
 func TestToolsCall_Verify_NonexistentFile(t *testing.T) {
+	t.Parallel()
 	srv := newTestServer(t)
 	req := `{"jsonrpc":"2.0","id":31,"method":"tools/call","params":{"name":"harness.verify","arguments":{"envelope_path":"/nonexistent-envelope-mcp-99999.json"}}}`
 	got := roundtrip(t, srv, req)
@@ -348,6 +358,7 @@ func TestToolsCall_Verify_NonexistentFile(t *testing.T) {
 // TestToolsCall_Verify_ValidEnvelope exercises the happy path with a real
 // fixture. Acceptance criterion: same pass/fail result as `junction verify`.
 func TestToolsCall_Verify_ValidEnvelope(t *testing.T) {
+	t.Parallel()
 	envelopePath := "../../testdata/apivr-to-atlas/ecl-envelope.json"
 	if _, err := os.Stat(envelopePath); err != nil {
 		t.Skipf("fixture %s not found — skipping happy-path verify test: %v", envelopePath, err)
@@ -387,6 +398,7 @@ func TestToolsCall_Verify_ValidEnvelope(t *testing.T) {
 // ─── tools/call — harness.inject (stub) ──────────────────────────────────────
 
 func TestToolsCall_Inject_Stub(t *testing.T) {
+	t.Parallel()
 	srv := newTestServer(t)
 	req := `{"jsonrpc":"2.0","id":40,"method":"tools/call","params":{"name":"harness.inject","arguments":{"thread_id":"abc-123","envelope":{}}}}`
 	got := roundtrip(t, srv, req)
@@ -417,6 +429,7 @@ func TestToolsCall_Inject_Stub(t *testing.T) {
 // ─── Protocol error cases ─────────────────────────────────────────────────────
 
 func TestUnknownMethod_MethodNotFound(t *testing.T) {
+	t.Parallel()
 	srv := newTestServer(t)
 	req := `{"jsonrpc":"2.0","id":99,"method":"unknown/method","params":{}}`
 	got := roundtrip(t, srv, req)
@@ -432,6 +445,7 @@ func TestUnknownMethod_MethodNotFound(t *testing.T) {
 }
 
 func TestUnknownTool_MethodNotFound(t *testing.T) {
+	t.Parallel()
 	srv := newTestServer(t)
 	req := `{"jsonrpc":"2.0","id":100,"method":"tools/call","params":{"name":"nonexistent.tool","arguments":{}}}`
 	got := roundtrip(t, srv, req)
@@ -447,6 +461,7 @@ func TestUnknownTool_MethodNotFound(t *testing.T) {
 }
 
 func TestMalformedJSON_ParseError(t *testing.T) {
+	t.Parallel()
 	srv := newTestServer(t)
 	in := bytes.NewBufferString("{not valid json}\n")
 	var out bytes.Buffer
@@ -476,6 +491,7 @@ func TestMalformedJSON_ParseError(t *testing.T) {
 // JSON output line (no streaming, no progress notifications), verifying
 // assumption A3 (MCP 2025-03-26 tools are pure request/response).
 func TestA3_PureRequestResponse(t *testing.T) {
+	t.Parallel()
 	cases := []struct {
 		name string
 		args string
@@ -485,7 +501,9 @@ func TestA3_PureRequestResponse(t *testing.T) {
 		{"harness.inject", `{"thread_id":"t1","envelope":{}}`},
 	}
 	for _, tc := range cases {
+		tc := tc
 		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
 			srv := newTestServer(t)
 			req := fmt.Sprintf(
 				`{"jsonrpc":"2.0","id":1,"method":"tools/call","params":{"name":%q,"arguments":%s}}`,

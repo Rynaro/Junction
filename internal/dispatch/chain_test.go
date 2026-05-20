@@ -63,6 +63,7 @@ func cannedEnvelope(t *testing.T, dir, name string) string {
 // WHEN Execute is called
 // THEN all three steps complete; ChainResult has 3 entries.
 func TestChainExecutor_AllPass(t *testing.T) {
+	t.Parallel()
 	base := t.TempDir()
 	firstEnv := cannedEnvelope(t, base, "human-input")
 
@@ -105,6 +106,7 @@ func TestChainExecutor_AllPass(t *testing.T) {
 // WHEN Execute is called
 // THEN chain stops at S1; error wraps ErrChainStepFailed; only 1 step completed.
 func TestChainExecutor_MidChainFailure(t *testing.T) {
+	t.Parallel()
 	base := t.TempDir()
 	firstEnv := cannedEnvelope(t, base, "input")
 
@@ -143,6 +145,7 @@ func TestChainExecutor_MidChainFailure(t *testing.T) {
 // WHEN Execute is called
 // THEN chain stops; error wraps ErrChainContractViolation.
 func TestChainExecutor_ContractMismatch(t *testing.T) {
+	t.Parallel()
 	base := t.TempDir()
 	firstEnv := cannedEnvelope(t, base, "input")
 
@@ -183,6 +186,7 @@ func TestChainExecutor_ContractMismatch(t *testing.T) {
 // WHEN Execute is called
 // THEN contract checking is skipped and the chain succeeds.
 func TestChainExecutor_NoRegistry_SkipsContractCheck(t *testing.T) {
+	t.Parallel()
 	base := t.TempDir()
 	firstEnv := cannedEnvelope(t, base, "input")
 
@@ -219,6 +223,7 @@ func TestChainExecutor_NoRegistry_SkipsContractCheck(t *testing.T) {
 // THEN each Request received by the executor has EidolonVersion equal to the
 // step's ToVersion (WS-V2-B: version threading).
 func TestChainExecutor_ThreadsToVersionToRequest(t *testing.T) {
+	t.Parallel()
 	base := t.TempDir()
 	firstEnv := cannedEnvelope(t, base, "input")
 

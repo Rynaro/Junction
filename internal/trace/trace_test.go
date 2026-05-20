@@ -15,6 +15,7 @@ const testThreadID = "4042b976-63b7-4bc8-bbcf-15205a8e0ffd"
 // ─── Open ────────────────────────────────────────────────────────────────────
 
 func TestOpen_CreatesDirectory(t *testing.T) {
+	t.Parallel()
 	root := t.TempDir()
 	j, err := trace.Open(root, testThreadID)
 	if err != nil {
@@ -29,6 +30,7 @@ func TestOpen_CreatesDirectory(t *testing.T) {
 }
 
 func TestOpen_Idempotent(t *testing.T) {
+	t.Parallel()
 	root := t.TempDir()
 	j1, err := trace.Open(root, testThreadID)
 	if err != nil {
@@ -46,6 +48,7 @@ func TestOpen_Idempotent(t *testing.T) {
 // ─── Append ──────────────────────────────────────────────────────────────────
 
 func TestAppend_RequiresKind(t *testing.T) {
+	t.Parallel()
 	root := t.TempDir()
 	j, err := trace.Open(root, testThreadID)
 	if err != nil {
@@ -62,6 +65,7 @@ func TestAppend_RequiresKind(t *testing.T) {
 // ─── AppendEnvelope + ReadAll round-trip ─────────────────────────────────────
 
 func TestAppendEnvelope_RoundTrip(t *testing.T) {
+	t.Parallel()
 	root := t.TempDir()
 	j, err := trace.Open(root, testThreadID)
 	if err != nil {
@@ -104,6 +108,7 @@ func TestAppendEnvelope_RoundTrip(t *testing.T) {
 // ─── AppendVerify ─────────────────────────────────────────────────────────────
 
 func TestAppendVerify_AllPass(t *testing.T) {
+	t.Parallel()
 	root := t.TempDir()
 	j, err := trace.Open(root, testThreadID)
 	if err != nil {
@@ -139,6 +144,7 @@ func TestAppendVerify_AllPass(t *testing.T) {
 // ─── Multiple events append-only ────────────────────────────────────────────
 
 func TestJournal_MultipleAppends(t *testing.T) {
+	t.Parallel()
 	root := t.TempDir()
 	j, err := trace.Open(root, testThreadID)
 	if err != nil {
@@ -179,6 +185,7 @@ func TestJournal_MultipleAppends(t *testing.T) {
 // ─── AppendError ─────────────────────────────────────────────────────────────
 
 func TestAppendError(t *testing.T) {
+	t.Parallel()
 	root := t.TempDir()
 	j, err := trace.Open(root, testThreadID)
 	if err != nil {
@@ -204,6 +211,7 @@ func TestAppendError(t *testing.T) {
 // ─── ReadAll on existing ECL example trace ───────────────────────────────────
 
 func TestReadAll_ExistingECLTrace(t *testing.T) {
+	t.Parallel()
 	// Use the known-good trace from ECL examples via testdata.
 	path := filepath.Join("..", "..", "testdata", "trace",
 		"4042b976-63b7-4bc8-bbcf-15205a8e0ffd.jsonl")

@@ -33,6 +33,7 @@ func writeTmpScript(t *testing.T, content string) string {
 // WHEN Execute is called
 // THEN Result.ExitCode == 0 and OutputEnvelopePath is non-empty.
 func TestExecute_HappyPath(t *testing.T) {
+	t.Parallel()
 	dir := t.TempDir()
 
 	// The "Eidolon" just creates an output envelope file.
@@ -68,6 +69,7 @@ touch "$ECL_OUTPUT_DIR/output.md.envelope.json"
 // ─── Non-zero exit → ErrDispatchFailed ───────────────────────────────────────
 
 func TestExecute_NonZeroExit(t *testing.T) {
+	t.Parallel()
 	dir := t.TempDir()
 	script := writeTmpScript(t, `#!/bin/sh
 exit 42
@@ -98,6 +100,7 @@ exit 42
 // ─── EntrypointOverride not found ───────────────────────────────────────────
 
 func TestExecute_OverrideNotFound(t *testing.T) {
+	t.Parallel()
 	exec := &dispatch.ShellExecutor{
 		EntrypointOverride: "/tmp/no-such-eidolon-xyzzy.sh",
 	}
@@ -119,6 +122,7 @@ func TestExecute_OverrideNotFound(t *testing.T) {
 // ─── Entrypoint resolution: no override, no local, no cache ──────────────────
 
 func TestExecute_NoEntrypoint(t *testing.T) {
+	t.Parallel()
 	exec := &dispatch.ShellExecutor{
 		ProjectDir: t.TempDir(), // empty — no .eidolons/
 		CacheDir:   t.TempDir(), // empty — no cache
@@ -141,6 +145,7 @@ func TestExecute_NoEntrypoint(t *testing.T) {
 // ─── ECL_THREAD_ID is set in the subprocess ──────────────────────────────────
 
 func TestExecute_ThreadIDPropagated(t *testing.T) {
+	t.Parallel()
 	dir := t.TempDir()
 	sentinel := filepath.Join(dir, "thread_id.txt")
 
@@ -180,6 +185,7 @@ echo "$ECL_THREAD_ID" > `+sentinel+`
 // ─── ECL_INPUT_ENVELOPE is set in the subprocess ────────────────────────────
 
 func TestExecute_InputEnvelopePropagated(t *testing.T) {
+	t.Parallel()
 	dir := t.TempDir()
 	sentinel := filepath.Join(dir, "input_env.txt")
 

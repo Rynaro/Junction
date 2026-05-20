@@ -51,6 +51,7 @@ const validPlanContainerJSON = `{
 }`
 
 func TestParse_ValidPlan(t *testing.T) {
+	t.Parallel()
 	p, err := plan.Parse(strings.NewReader(validPlanJSON))
 	if err != nil {
 		t.Fatalf("expected no error, got: %v", err)
@@ -91,6 +92,7 @@ func TestParse_ValidPlan(t *testing.T) {
 }
 
 func TestParse_DefaultsApplied(t *testing.T) {
+	t.Parallel()
 	// Plan without executor/enforce fields — defaults must be applied.
 	p, err := plan.Parse(strings.NewReader(validPlanContainerJSON))
 	if err != nil {
@@ -147,8 +149,11 @@ var invalidCases = []struct {
 }
 
 func TestParse_InvalidCases(t *testing.T) {
+	t.Parallel()
 	for _, tc := range invalidCases {
+		tc := tc
 		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
 			_, err := plan.Parse(strings.NewReader(tc.json))
 			if err == nil {
 				t.Fatal("expected error, got nil")
@@ -165,6 +170,7 @@ func TestParse_InvalidCases(t *testing.T) {
 // ---------------------------------------------------------------------------
 
 func TestToChainSteps_SingleStep(t *testing.T) {
+	t.Parallel()
 	p, err := plan.Parse(strings.NewReader(validPlanJSON))
 	if err != nil {
 		t.Fatalf("parse: %v", err)
@@ -198,6 +204,7 @@ func TestToChainSteps_SingleStep(t *testing.T) {
 }
 
 func TestToChainSteps_MultiStep(t *testing.T) {
+	t.Parallel()
 	p, err := plan.Parse(strings.NewReader(validPlanContainerJSON))
 	if err != nil {
 		t.Fatalf("parse: %v", err)
@@ -219,6 +226,7 @@ func TestToChainSteps_MultiStep(t *testing.T) {
 // WHEN ToChainSteps is called
 // THEN each ChainStep.ToVersion matches the source plan's to.version.
 func TestToChainSteps_ToVersionRoundtrip(t *testing.T) {
+	t.Parallel()
 	p, err := plan.Parse(strings.NewReader(validPlanJSON))
 	if err != nil {
 		t.Fatalf("parse: %v", err)
@@ -239,6 +247,7 @@ func TestToChainSteps_ToVersionRoundtrip(t *testing.T) {
 // WHEN ToChainSteps is called
 // THEN each ChainStep.ToVersion matches its respective to.version.
 func TestToChainSteps_MultiStep_ToVersionRoundtrip(t *testing.T) {
+	t.Parallel()
 	p, err := plan.Parse(strings.NewReader(validPlanContainerJSON))
 	if err != nil {
 		t.Fatalf("parse: %v", err)
@@ -265,6 +274,7 @@ func TestToChainSteps_MultiStep_ToVersionRoundtrip(t *testing.T) {
 // ---------------------------------------------------------------------------
 
 func TestSelectExecutor_ShellWhenNoContainer(t *testing.T) {
+	t.Parallel()
 	opts := plan.ExecutorOptions{ProjectDir: "/tmp", CacheDir: "/tmp/cache"}
 	exec := plan.SelectExecutor(plan.ExecutorModeContainer, true, opts)
 	if _, ok := exec.(*dispatch.ShellExecutor); !ok {
@@ -273,6 +283,7 @@ func TestSelectExecutor_ShellWhenNoContainer(t *testing.T) {
 }
 
 func TestSelectExecutor_ShellWhenModeShell(t *testing.T) {
+	t.Parallel()
 	opts := plan.ExecutorOptions{ProjectDir: "/tmp", CacheDir: "/tmp/cache"}
 	exec := plan.SelectExecutor(plan.ExecutorModeShell, false, opts)
 	if _, ok := exec.(*dispatch.ShellExecutor); !ok {
@@ -281,6 +292,7 @@ func TestSelectExecutor_ShellWhenModeShell(t *testing.T) {
 }
 
 func TestSelectExecutor_ContainerWhenModeContainer(t *testing.T) {
+	t.Parallel()
 	opts := plan.ExecutorOptions{ProjectDir: "/tmp", CacheDir: "/tmp/cache"}
 	exec := plan.SelectExecutor(plan.ExecutorModeContainer, false, opts)
 	if _, ok := exec.(*dispatch.ContainerExecutor); !ok {
@@ -289,6 +301,7 @@ func TestSelectExecutor_ContainerWhenModeContainer(t *testing.T) {
 }
 
 func TestSelectExecutor_ContainerWhenModeEmpty(t *testing.T) {
+	t.Parallel()
 	opts := plan.ExecutorOptions{ProjectDir: "/tmp", CacheDir: "/tmp/cache"}
 	exec := plan.SelectExecutor("", false, opts)
 	if _, ok := exec.(*dispatch.ContainerExecutor); !ok {
@@ -297,6 +310,7 @@ func TestSelectExecutor_ContainerWhenModeEmpty(t *testing.T) {
 }
 
 func TestSelectExecutor_NoContainerOverridesContainerMode(t *testing.T) {
+	t.Parallel()
 	opts := plan.ExecutorOptions{ProjectDir: "/tmp", CacheDir: "/tmp/cache"}
 	// Even when mode is container, noContainer=true must force shell.
 	exec := plan.SelectExecutor(plan.ExecutorModeContainer, true, opts)
@@ -310,6 +324,7 @@ func TestSelectExecutor_NoContainerOverridesContainerMode(t *testing.T) {
 // ---------------------------------------------------------------------------
 
 func TestModeFromString(t *testing.T) {
+	t.Parallel()
 	cases := []struct {
 		in   string
 		want plan.ExecutorMode

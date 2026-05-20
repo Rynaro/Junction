@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"strings"
+	"sync"
 
 	"github.com/Rynaro/Junction/internal/schemas"
 	"github.com/santhosh-tekuri/jsonschema/v5"
@@ -36,38 +37,45 @@ const (
 )
 
 // compiledSchema is the singleton compiled schema, built once on first use.
-// Tests and multiple Validate calls share the same compiled schema.
-var compiledSchema *jsonschema.Schema
+// Init is guarded by schemaOnce so concurrent verifies share a single
+// happens-before edge to the assignment (the harness runs verifies in
+// parallel under MCP sampling and from t.Parallel test bodies).
+var (
+	compiledSchema    *jsonschema.Schema
+	compiledSchemaErr error
+	schemaOnce        sync.Once
+)
 
 // getSchema returns the compiled ECL envelope v1.0 JSON schema, compiling it
-// on first call. Thread-safety is not required for the F1 scope (single-
-// goroutine verification path).
+// on first call.
 func getSchema() (*jsonschema.Schema, error) {
-	if compiledSchema != nil {
-		return compiledSchema, nil
-	}
+	schemaOnce.Do(func() {
+		c := jsonschema.NewCompiler()
+		c.Draft = jsonschema.Draft2020
 
-	c := jsonschema.NewCompiler()
-	c.Draft = jsonschema.Draft2020
+		// Add sub-schemas by their declared $id so the $ref resolution in the
+		// envelope schema resolves without network access.
+		if err := c.AddResource(performativeID, bytes.NewReader(schemas.PerformativeV1)); err != nil {
+			compiledSchemaErr = fmt.Errorf("envelope: loading performative schema: %w", err)
+			return
+		}
+		if err := c.AddResource(contextDeltaID, bytes.NewReader(schemas.ContextDeltaV1)); err != nil {
+			compiledSchemaErr = fmt.Errorf("envelope: loading context-delta schema: %w", err)
+			return
+		}
+		if err := c.AddResource(envelopeSchemaID, bytes.NewReader(schemas.EnvelopeV1)); err != nil {
+			compiledSchemaErr = fmt.Errorf("envelope: loading envelope schema: %w", err)
+			return
+		}
 
-	// Add sub-schemas by their declared $id so the $ref resolution in the
-	// envelope schema resolves without network access.
-	if err := c.AddResource(performativeID, bytes.NewReader(schemas.PerformativeV1)); err != nil {
-		return nil, fmt.Errorf("envelope: loading performative schema: %w", err)
-	}
-	if err := c.AddResource(contextDeltaID, bytes.NewReader(schemas.ContextDeltaV1)); err != nil {
-		return nil, fmt.Errorf("envelope: loading context-delta schema: %w", err)
-	}
-	if err := c.AddResource(envelopeSchemaID, bytes.NewReader(schemas.EnvelopeV1)); err != nil {
-		return nil, fmt.Errorf("envelope: loading envelope schema: %w", err)
-	}
-
-	schema, err := c.Compile(envelopeSchemaID)
-	if err != nil {
-		return nil, fmt.Errorf("envelope: compiling schema: %w", err)
-	}
-	compiledSchema = schema
-	return compiledSchema, nil
+		schema, err := c.Compile(envelopeSchemaID)
+		if err != nil {
+			compiledSchemaErr = fmt.Errorf("envelope: compiling schema: %w", err)
+			return
+		}
+		compiledSchema = schema
+	})
+	return compiledSchema, compiledSchemaErr
 }
 
 // Validate validates the envelope against the ECL v1.0 JSON schema (L1 check)

@@ -5,9 +5,9 @@ package dispatch_test
 import (
 	"context"
 	"errors"
+	"sync"
 	"sync/atomic"
 	"testing"
-	"time"
 
 	"github.com/Rynaro/Junction/internal/dispatch"
 )
@@ -16,12 +16,24 @@ import (
 
 // concurrentStubExecutor tracks peak concurrent usage and returns canned
 // results by branch index. Each Execute call increments the in-flight counter,
-// sleeps briefly (to ensure overlap), then decrements.
+// waits on a barrier (so every goroutine in a worker-pool slot reaches the peak
+// counter check simultaneously), then decrements. The barrier sizes itself to
+// the pool's concurrency cap so we observe a deterministic peak without
+// burning wall-clock on time.Sleep.
 type concurrentStubExecutor struct {
 	inFlight    atomic.Int64
 	peakConcurr atomic.Int64
 	results     []stubExecutorCall // indexed by order of call
 	callCount   atomic.Int64
+
+	// barrierSize, when > 1, makes Execute block until barrierSize goroutines
+	// have arrived. This replaces a time.Sleep that previously enforced
+	// overlap; the barrier guarantees deterministic peak concurrency
+	// observation without burning wall-clock.
+	barrierSize int
+	barrierOnce sync.Once
+	barrierCh   chan struct{}
+	arrived     atomic.Int64
 }
 
 func (c *concurrentStubExecutor) Execute(_ context.Context, req dispatch.Request) (dispatch.Result, error) {
@@ -33,10 +45,27 @@ func (c *concurrentStubExecutor) Execute(_ context.Context, req dispatch.Request
 			break
 		}
 	}
-	time.Sleep(10 * time.Millisecond) // ensure goroutines overlap
+
+	// Capture this call's index BEFORE any blocking so the result lookup is
+	// stable regardless of ordering.
+	idx := int(c.callCount.Add(1)) - 1
+
+	// Synchronisation barrier (replaces time.Sleep). Only active when the
+	// test sets barrierSize > 1 — e.g. to guarantee peak concurrency reaches
+	// barrierSize. The first goroutine to call this initializes the channel;
+	// the Nth one closes it, releasing all waiters.
+	if c.barrierSize > 1 {
+		c.barrierOnce.Do(func() {
+			c.barrierCh = make(chan struct{})
+		})
+		if c.arrived.Add(1) == int64(c.barrierSize) {
+			close(c.barrierCh)
+		}
+		<-c.barrierCh
+	}
+
 	c.inFlight.Add(-1)
 
-	idx := int(c.callCount.Add(1)) - 1
 	if idx < len(c.results) {
 		r := c.results[idx]
 		r.result.StepID = req.StepID
@@ -51,6 +80,7 @@ func (c *concurrentStubExecutor) Execute(_ context.Context, req dispatch.Request
 // WHEN Execute is called
 // THEN both complete and FanoutResult.Branches has 2 entries with no error.
 func TestFanoutExecutor_TwoBranchesSucceed(t *testing.T) {
+	t.Parallel()
 	inner := &concurrentStubExecutor{
 		results: []stubExecutorCall{
 			{result: dispatch.Result{ExitCode: 0}},
@@ -88,6 +118,7 @@ func TestFanoutExecutor_TwoBranchesSucceed(t *testing.T) {
 // WHEN Execute is called
 // THEN the returned error is non-nil (the failing branch's error).
 func TestFanoutExecutor_OneBranchFails(t *testing.T) {
+	t.Parallel()
 	sentinelErr := errors.New("branch 1 failed")
 	inner := &concurrentStubExecutor{
 		results: []stubExecutorCall{
@@ -116,6 +147,7 @@ func TestFanoutExecutor_OneBranchFails(t *testing.T) {
 // WHEN Execute is called
 // THEN Execute returns ErrParallelBranchesExceeded without dispatching.
 func TestFanoutExecutor_ExceedsMaxConcurrency(t *testing.T) {
+	t.Parallel()
 	inner := &concurrentStubExecutor{}
 	f := &dispatch.FanoutExecutor{
 		Executor:      inner,
@@ -143,6 +175,9 @@ func TestFanoutExecutor_ExceedsMaxConcurrency(t *testing.T) {
 // WHEN Execute is called
 // THEN peak concurrency observed is at most 2.
 func TestFanoutExecutor_ConcurrencyCap(t *testing.T) {
+	t.Parallel()
+	// barrierSize=2 forces both pool slots to arrive in Execute before either
+	// proceeds — guarantees peak concurrency reaches the cap without a sleep.
 	inner := &concurrentStubExecutor{
 		results: []stubExecutorCall{
 			{result: dispatch.Result{ExitCode: 0}},
@@ -150,6 +185,7 @@ func TestFanoutExecutor_ConcurrencyCap(t *testing.T) {
 			{result: dispatch.Result{ExitCode: 0}},
 			{result: dispatch.Result{ExitCode: 0}},
 		},
+		barrierSize: 2,
 	}
 	f := &dispatch.FanoutExecutor{
 		Executor:      inner,
@@ -178,6 +214,7 @@ func TestFanoutExecutor_ConcurrencyCap(t *testing.T) {
 // WHEN Execute is called with an already-cancelled context
 // THEN all branches report a cancelled error and the overall error is non-nil.
 func TestFanoutExecutor_ContextCancelled(t *testing.T) {
+	t.Parallel()
 	inner := &concurrentStubExecutor{}
 	f := &dispatch.FanoutExecutor{
 		Executor:      inner,
