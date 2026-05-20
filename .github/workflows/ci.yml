@@ -20,8 +20,32 @@ jobs:
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
 
-      - name: Build dev image
-        run: docker compose build dev
+      # Cache the dev-image layers via GitHub Actions cache. dev-image
+      # rebuilds are the single longest step in this job (~30 s cold);
+      # gha cache makes the second-and-later builds < 5 s.
+      - name: Build dev image (with gha cache)
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          target: dev
+          tags: junction-dev:local
+          load: true
+          cache-from: type=gha,scope=dev
+          cache-to:   type=gha,scope=dev,mode=max
+
+      # Cache Go's build cache + module cache across runs. These are the
+      # host paths that docker-compose.yml bind-mounts into the container.
+      # The keys mirror go.sum so any module change invalidates them.
+      - name: Cache Go build + module caches
+        uses: actions/cache@v4
+        with:
+          path: |
+            .gocache
+            .gomodcache
+          key:          ${{ runner.os }}-go-${{ hashFiles('**/go.sum') }}-${{ hashFiles('**/*.go') }}
+          restore-keys: |
+            ${{ runner.os }}-go-${{ hashFiles('**/go.sum') }}-
+            ${{ runner.os }}-go-
 
       - name: make check
         run: make check
@@ -35,8 +59,15 @@ jobs:
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
 
-      - name: Build dev image
-        run: docker compose build dev
+      - name: Build dev image (with gha cache)
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          target: dev
+          tags: junction-dev:local
+          load: true
+          cache-from: type=gha,scope=dev
+          cache-to:   type=gha,scope=dev,mode=max
 
       - name: Sync contracts from upstream pin
         run: make sync-contracts
@@ -61,5 +92,15 @@ jobs:
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
 
-      - name: Build release image
-        run: make image
+      # Release image uses its own scope so a dev-image change doesn't
+      # invalidate release cache and vice versa.
+      - name: Build release image (with gha cache)
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          target: release
+          tags: junction:local
+          build-args: |
+            VERSION=0.0.0-dev
+          cache-from: type=gha,scope=release
+          cache-to:   type=gha,scope=release,mode=max

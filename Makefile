@@ -32,7 +32,7 @@ cache-dirs:
 help:
 	@echo "Junction — developer entry points"
 	@echo
-	@echo "  make check          go vet + go test -race + golangci-lint + lint-examples (single source of truth for CI)"
+	@echo "  make check          go test -race + golangci-lint + lint-examples (single source of truth for CI)"
 	@echo "  make lint-examples  static gate: yq parse + compose config + shellcheck over examples/"
 	@echo "  make dev       Open an interactive shell in the dev container"
 	@echo "  make test      Run go test ./... inside the dev container"
@@ -53,11 +53,16 @@ dev: shell
 shell: cache-dirs
 	$(COMPOSE) run --rm dev bash
 
-# check: single source of truth for lint + test + vet + examples static gate — matches CI verbatim.
+# check: single source of truth for lint + test + examples static gate — matches CI verbatim.
 # Pre-push hook (.githooks/pre-push) invokes this target.
 # CI (.github/workflows/ci.yml) invokes this target in the check job.
+#
+# `go vet` is intentionally omitted: golangci-lint enables the `govet` linter
+# by default, so running both compiles the same passes twice.
+# -parallel=8 lifts the in-package t.Parallel() cap above the typical
+# 2-vCPU GitHub runner core count, which matters for I/O-bound tests.
 check: cache-dirs lint-examples
-	$(COMPOSE) run --rm -e CGO_ENABLED=1 dev sh -c "go vet ./... && go test -race ./... && golangci-lint run ./..."
+	$(COMPOSE) run --rm -e CGO_ENABLED=1 dev sh -c "go test -race -parallel=8 ./... && golangci-lint run ./..."
 
 # lint-examples: fast static gate over every examples/<scenario>/.
 # Three checks run over all scenarios, aggregating failures (never stops at
@@ -79,8 +84,12 @@ check: cache-dirs lint-examples
 #   3. shellcheck       — catches shell syntax / quoting bugs in *.sh files.
 #                         Runs inside the dev container (shellcheck installed).
 #
-# yq and shellcheck run inside the dev container; compose config runs on the
-# host (client-side operation, no image pull, no container create).
+# All in-container checks (yq + shellcheck across every scenario) execute
+# inside a SINGLE `docker compose run`, instead of one container per
+# scenario × check. On Docker Desktop / GitHub-runner Linux this saves
+# ~1-2 s per skipped invocation (≈10 s per `make check`).
+#
+# `compose config` still runs on the host (client-side, no daemon contact).
 lint-examples:
 	@fail=0; \
 	daemon_ok=1; \
@@ -88,15 +97,28 @@ lint-examples:
 	    daemon_ok=0; \
 	    echo "examples: docker daemon unreachable, skipping compose config validation"; \
 	fi; \
+	echo "==> lint-examples: yq parse + shellcheck (all scenarios, single container)"; \
+	$(COMPOSE) run --rm dev sh -c '\
+	    set -u; \
+	    rc=0; \
+	    for d in /workspace/examples/*/; do \
+	        scenario=$$(basename "$$d"); \
+	        for f in "$$d"docker-compose*.yml "$$d"compose*.yml; do \
+	            [ -f "$$f" ] || continue; \
+	            echo "  yq:         $$f"; \
+	            yq eval "." "$$f" > /dev/null || { echo "FAIL: $$scenario yq parse failed"; rc=1; }; \
+	        done; \
+	        for f in "$$d"*.sh; do \
+	            [ -f "$$f" ] || continue; \
+	            echo "  shellcheck: $$f"; \
+	            shellcheck -x -S error "$$f" || { echo "FAIL: $$scenario shellcheck failed"; rc=1; }; \
+	        done; \
+	    done; \
+	    exit $$rc' \
+	|| fail=1; \
 	for d in examples/*/; do \
 	    scenario="$$(basename "$$d")"; \
-	    \
-	    echo "==> lint-examples: $$scenario — yq parse"; \
-	    $(COMPOSE) run --rm dev sh -c \
-	        'rc=0; for f in /workspace/'"$$d"'docker-compose*.yml /workspace/'"$$d"'compose*.yml; do [ -f "$$f" ] || continue; echo "  yq: $$f"; yq eval "." "$$f" > /dev/null || rc=1; done; exit $$rc' \
-	    || { echo "FAIL: $$scenario yq parse failed"; fail=1; }; \
-	    \
-	    echo "==> lint-examples: $$scenario — compose config"; \
+	    echo "==> lint-examples: $$scenario — compose config (host)"; \
 	    if [ "$$daemon_ok" = "1" ]; then \
 	        ( cd "$$d" \
 	          && JUNCTION_IN_DIR=/tmp \
@@ -117,12 +139,6 @@ lint-examples:
 	            fi; \
 	        }; \
 	    fi; \
-	    \
-	    echo "==> lint-examples: $$scenario — shellcheck"; \
-	    $(COMPOSE) run --rm dev sh -c \
-	        'rc=0; for f in /workspace/'"$$d"'*.sh; do [ -f "$$f" ] || continue; shellcheck -x -S error "$$f" || rc=1; done; exit $$rc' \
-	    || { echo "FAIL: $$scenario shellcheck failed"; fail=1; }; \
-	\
 	done; \
 	if [ "$$fail" = "1" ]; then \
 	    echo "lint-examples: one or more scenarios failed — see above"; \
@@ -131,10 +147,10 @@ lint-examples:
 	echo "lint-examples: all scenarios passed."
 
 test: cache-dirs
-	$(COMPOSE) run --rm dev go test ./...
+	$(COMPOSE) run --rm dev go test -parallel=8 ./...
 
 test-race: cache-dirs
-	$(COMPOSE) run --rm -e CGO_ENABLED=1 dev go test -race ./...
+	$(COMPOSE) run --rm -e CGO_ENABLED=1 dev go test -race -parallel=8 ./...
 
 lint: cache-dirs
 	$(COMPOSE) run --rm dev golangci-lint run ./...

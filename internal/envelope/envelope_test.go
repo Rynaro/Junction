@@ -37,6 +37,7 @@ func fixturesDir(t *testing.T) string {
 // WHEN Envelope.Validate runs
 // THEN it returns nil.
 func TestValidate_HappyPath(t *testing.T) {
+	t.Parallel()
 	dir := fixturesDir(t)
 	cases := []struct {
 		sidecar  string
@@ -50,6 +51,7 @@ func TestValidate_HappyPath(t *testing.T) {
 	for _, tc := range cases {
 		tc := tc
 		t.Run(tc.sidecar, func(t *testing.T) {
+			t.Parallel()
 			env, err := envelope.Read(filepath.Join(dir, tc.sidecar))
 			if err != nil {
 				t.Fatalf("Read: %v", err)
@@ -65,6 +67,7 @@ func TestValidate_HappyPath(t *testing.T) {
 // WHEN VerifyIntegrity runs against the real artifact file
 // THEN it returns nil.
 func TestVerifyIntegrity_HappyPath(t *testing.T) {
+	t.Parallel()
 	dir := fixturesDir(t)
 	env, err := envelope.Read(filepath.Join(dir, "scout-report.md.envelope.json"))
 	if err != nil {
@@ -80,6 +83,7 @@ func TestVerifyIntegrity_HappyPath(t *testing.T) {
 // WHEN VerifyIntegrity runs
 // THEN it returns ErrIntegrityMismatch.
 func TestVerifyIntegrity_TamperedArtifact(t *testing.T) {
+	t.Parallel()
 	// Set up a temp dir with a copy of the fixture.
 	dir := t.TempDir()
 	srcDir := fixturesDir(t)
@@ -111,6 +115,7 @@ func TestVerifyIntegrity_TamperedArtifact(t *testing.T) {
 // WHEN VerifyIntegrity runs
 // THEN it returns ErrIntegrityDigestMismatch.
 func TestVerifyIntegrity_DigestMismatch(t *testing.T) {
+	t.Parallel()
 	dir := fixturesDir(t)
 	env, err := envelope.Read(filepath.Join(dir, "scout-report.md.envelope.json"))
 	if err != nil {
@@ -136,6 +141,7 @@ func TestVerifyIntegrity_DigestMismatch(t *testing.T) {
 // WHEN ValidateBytes runs
 // THEN it returns a wrapped ErrSchemaValidation.
 func TestValidate_MissingRequiredField(t *testing.T) {
+	t.Parallel()
 	dir := fixturesDir(t)
 	data, err := os.ReadFile(filepath.Join(dir, "scout-report.md.envelope.json"))
 	if err != nil {
@@ -164,6 +170,7 @@ func TestValidate_MissingRequiredField(t *testing.T) {
 // WHEN Validate runs
 // THEN it returns a schema error pointing at the field.
 func TestValidate_BadEnvelopeVersion(t *testing.T) {
+	t.Parallel()
 	dir := fixturesDir(t)
 
 	// Versions outside the ^[12]\.0(\.\d+)?$ window must be rejected.
@@ -171,6 +178,7 @@ func TestValidate_BadEnvelopeVersion(t *testing.T) {
 	for _, ver := range invalid {
 		ver := ver
 		t.Run(ver, func(t *testing.T) {
+			t.Parallel()
 			env, err := envelope.Read(filepath.Join(dir, "scout-report.md.envelope.json"))
 			if err != nil {
 				t.Fatalf("Read: %v", err)
@@ -191,6 +199,7 @@ func TestValidate_BadEnvelopeVersion(t *testing.T) {
 // WHEN Validate runs
 // THEN it returns nil (widening resolves OQ-23 / Friction-5).
 func TestValidate_EnvelopeVersionCompat(t *testing.T) {
+	t.Parallel()
 	dir := fixturesDir(t)
 
 	// All these must be accepted by the widened ^[12]\.0(\.\d+)?$ regex.
@@ -198,6 +207,7 @@ func TestValidate_EnvelopeVersionCompat(t *testing.T) {
 	for _, ver := range valid {
 		ver := ver
 		t.Run(ver, func(t *testing.T) {
+			t.Parallel()
 			env, err := envelope.Read(filepath.Join(dir, "scout-report.md.envelope.json"))
 			if err != nil {
 				t.Fatalf("Read: %v", err)
@@ -216,6 +226,7 @@ func TestValidate_EnvelopeVersionCompat(t *testing.T) {
 // WHEN ValidatePerformative runs
 // THEN it returns nil.
 func TestValidatePerformative_KnownValues(t *testing.T) {
+	t.Parallel()
 	known := []string{
 		"REQUEST", "INFORM", "PROPOSE", "CRITIQUE", "DECIDE",
 		"DELEGATE", "ACKNOWLEDGE", "ESCALATE", "RESUME", "REFUSE",
@@ -233,6 +244,7 @@ func TestValidatePerformative_KnownValues(t *testing.T) {
 // WHEN ValidatePerformative runs
 // THEN it returns ErrUnknownPerformative.
 func TestValidatePerformative_Unknown(t *testing.T) {
+	t.Parallel()
 	env := &envelope.Envelope{Performative: "INVENT"}
 	err := env.ValidatePerformative()
 	if err == nil {
@@ -251,6 +263,7 @@ func TestValidatePerformative_Unknown(t *testing.T) {
 //
 //	and a subsequent VerifyIntegrity returns nil.
 func TestEmit_HappyPath(t *testing.T) {
+	t.Parallel()
 	dir := t.TempDir()
 
 	// Write a test artifact.
@@ -311,6 +324,7 @@ func TestEmit_HappyPath(t *testing.T) {
 // WHEN ValidateBytes runs
 // THEN it returns an ErrSchemaValidation.
 func TestValidateBytes_MalformedJSON(t *testing.T) {
+	t.Parallel()
 	err := envelope.ValidateBytes([]byte(`{"not": "closed"`))
 	if err == nil {
 		t.Fatal("ValidateBytes(malformed JSON) = nil, want error")
@@ -324,6 +338,7 @@ func TestValidateBytes_MalformedJSON(t *testing.T) {
 // WHEN ValidateBytes runs
 // THEN it returns nil.
 func TestValidateBytes_ValidFixture(t *testing.T) {
+	t.Parallel()
 	dir := fixturesDir(t)
 	data, err := os.ReadFile(filepath.Join(dir, "scout-report.md.envelope.json"))
 	if err != nil {
@@ -337,6 +352,7 @@ func TestValidateBytes_ValidFixture(t *testing.T) {
 // ─── SHA256Bytes ──────────────────────────────────────────────────────────────
 
 func TestSHA256Bytes_KnownVector(t *testing.T) {
+	t.Parallel()
 	// echo -n "" | sha256sum → e3b0...
 	empty := envelope.SHA256Bytes([]byte{})
 	if empty != "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855" {
@@ -347,6 +363,7 @@ func TestSHA256Bytes_KnownVector(t *testing.T) {
 // ─── Read error path ─────────────────────────────────────────────────────────
 
 func TestRead_NonExistentFile(t *testing.T) {
+	t.Parallel()
 	_, err := envelope.Read("/tmp/no-such-envelope-xyzzy.json")
 	if err == nil {
 		t.Fatal("Read(nonexistent) = nil, want error")
@@ -354,6 +371,7 @@ func TestRead_NonExistentFile(t *testing.T) {
 }
 
 func TestRead_MalformedJSON(t *testing.T) {
+	t.Parallel()
 	dir := t.TempDir()
 	path := filepath.Join(dir, "bad.json")
 	if err := os.WriteFile(path, []byte("not json{{{"), 0o644); err != nil {

@@ -40,6 +40,7 @@ func junctionEntry(m map[string]interface{}) map[string]interface{} {
 // ─── Test 1: idempotent install ───────────────────────────────────────────────
 
 func TestWriteMCPEntry_Idempotent(t *testing.T) {
+	t.Parallel()
 	dir := t.TempDir()
 	mcpPath := filepath.Join(dir, ".mcp.json")
 	cfg := mcp.DefaultServerConfig()
@@ -70,6 +71,7 @@ func TestWriteMCPEntry_Idempotent(t *testing.T) {
 // ─── Test 2: existing keys preserved on install ───────────────────────────────
 
 func TestWriteMCPEntry_PreservesOtherKeys(t *testing.T) {
+	t.Parallel()
 	dir := t.TempDir()
 	mcpPath := filepath.Join(dir, ".mcp.json")
 
@@ -124,6 +126,7 @@ func TestWriteMCPEntry_PreservesOtherKeys(t *testing.T) {
 // ─── Test 3: uninstall removes junction key, preserves others ────────────────
 
 func TestRemoveMCPEntry_SurgicalRemoval(t *testing.T) {
+	t.Parallel()
 	dir := t.TempDir()
 	mcpPath := filepath.Join(dir, ".mcp.json")
 	cfg := mcp.DefaultServerConfig()
@@ -178,6 +181,7 @@ func TestRemoveMCPEntry_SurgicalRemoval(t *testing.T) {
 
 // TestRemoveMCPEntry_Noop verifies uninstall is a no-op when the file does not exist.
 func TestRemoveMCPEntry_Noop(t *testing.T) {
+	t.Parallel()
 	dir := t.TempDir()
 	mcpPath := filepath.Join(dir, ".mcp.json")
 
@@ -189,6 +193,7 @@ func TestRemoveMCPEntry_Noop(t *testing.T) {
 // ─── Test 4: --with-skill write is idempotent ─────────────────────────────────
 
 func TestWriteSkill_Idempotent(t *testing.T) {
+	t.Parallel()
 	dir := t.TempDir()
 	skillPath := filepath.Join(dir, ".claude", "skills", "junction", "SKILL.md")
 	content := mcp.SkillContent()
@@ -228,6 +233,7 @@ func TestWriteSkill_Idempotent(t *testing.T) {
 // TestWriteSkill_AppendToExisting verifies that writing to a file that already
 // has content (but no junction markers) appends the block.
 func TestWriteSkill_AppendToExisting(t *testing.T) {
+	t.Parallel()
 	dir := t.TempDir()
 	skillPath := filepath.Join(dir, "SKILL.md")
 
@@ -258,6 +264,7 @@ func TestWriteSkill_AppendToExisting(t *testing.T) {
 // ─── Test 5: uninstall (with prior --with-skill) excises the marker block ─────
 
 func TestRemoveSkill_ExcisesMarkerBlock(t *testing.T) {
+	t.Parallel()
 	dir := t.TempDir()
 	skillPath := filepath.Join(dir, ".claude", "skills", "junction", "SKILL.md")
 	content := mcp.SkillContent()
@@ -279,6 +286,7 @@ func TestRemoveSkill_ExcisesMarkerBlock(t *testing.T) {
 // TestRemoveSkill_PreservesOtherContent verifies that only the junction block
 // is removed when SKILL.md contains other content.
 func TestRemoveSkill_PreservesOtherContent(t *testing.T) {
+	t.Parallel()
 	dir := t.TempDir()
 	skillPath := filepath.Join(dir, "SKILL.md")
 	content := mcp.SkillContent()
@@ -320,6 +328,7 @@ func TestRemoveSkill_PreservesOtherContent(t *testing.T) {
 // TestRemoveSkill_Noop verifies that RemoveSkill is a no-op when the file does
 // not exist.
 func TestRemoveSkill_Noop(t *testing.T) {
+	t.Parallel()
 	dir := t.TempDir()
 	skillPath := filepath.Join(dir, "SKILL.md")
 

@@ -110,6 +110,7 @@ func stubContainerExecutor(calls []stubCall) *dispatch.ContainerExecutor {
 // WHEN Execute is called
 // THEN Result.ExitCode == 0 and ImageRef is set to the resolved image.
 func TestContainerExecutor_HappyPath(t *testing.T) {
+	t.Parallel()
 	base := t.TempDir()
 	inDir := filepath.Join(base, "in")
 	outDir := filepath.Join(base, "out")
@@ -185,6 +186,7 @@ func TestContainerExecutor_EnvVarImageOverride(t *testing.T) {
 // WHEN Execute is called (no --no-container override)
 // THEN Execute returns ErrImageNotAvailable (maps to exit 71).
 func TestContainerExecutor_ImagePullFailed_Exit71(t *testing.T) {
+	t.Parallel()
 	base := t.TempDir()
 	inDir := filepath.Join(base, "in")
 	outDir := filepath.Join(base, "out")
@@ -223,6 +225,7 @@ func TestContainerExecutor_ImagePullFailed_Exit71(t *testing.T) {
 //   (c) the override env-var name JUNCTION_EIDOLON_IMAGE_<NAME>,
 //   (d) the OQ-17 / v0.2 deferral hint.
 func TestContainerExecutor_ImagePullFailed_ActionableError(t *testing.T) {
+	t.Parallel()
 	base := t.TempDir()
 	inDir := filepath.Join(base, "in")
 	outDir := filepath.Join(base, "out")
@@ -296,6 +299,7 @@ func TestContainerExecutor_ImagePullFailed_ActionableError(t *testing.T) {
 // THEN the error is ErrImageNotAvailable, names the eidolon and the override
 // env-var, and does NOT contain ":latest".
 func TestContainerExecutor_EmptyVersion_NoLatestFallback(t *testing.T) {
+	t.Parallel()
 	base := t.TempDir()
 	inDir := filepath.Join(base, "in")
 	outDir := filepath.Join(base, "out")
@@ -344,6 +348,7 @@ func TestContainerExecutor_EmptyVersion_NoLatestFallback(t *testing.T) {
 // WHEN Execute is called
 // THEN Execute returns ErrDockerUnreachable (maps to exit 72).
 func TestContainerExecutor_DockerUnreachable_Exit72(t *testing.T) {
+	t.Parallel()
 	base := t.TempDir()
 	inDir := filepath.Join(base, "in")
 	outDir := filepath.Join(base, "out")
@@ -381,6 +386,7 @@ func TestContainerExecutor_DockerUnreachable_Exit72(t *testing.T) {
 // WHEN Execute is called
 // THEN Execute returns ErrDispatchFailed.
 func TestContainerExecutor_ContainerExitNonZero(t *testing.T) {
+	t.Parallel()
 	base := t.TempDir()
 	inDir := filepath.Join(base, "in")
 	outDir := filepath.Join(base, "out")
@@ -415,6 +421,7 @@ func TestContainerExecutor_ContainerExitNonZero(t *testing.T) {
 // WHEN Execute is called
 // THEN Result.OutputEnvelopePath is non-empty.
 func TestContainerExecutor_OutputEnvelopeDiscovered(t *testing.T) {
+	t.Parallel()
 	base := t.TempDir()
 	inDir := filepath.Join(base, "in")
 	outDir := filepath.Join(base, "out")
@@ -459,6 +466,7 @@ func TestContainerExecutor_OutputEnvelopeDiscovered(t *testing.T) {
 // WHEN Execute is called
 // THEN JUNCTION_THREAD_ID and JUNCTION_INPUT_ENVELOPE appear in the docker run args.
 func TestContainerExecutor_EnvVarPropagation(t *testing.T) {
+	t.Parallel()
 	base := t.TempDir()
 	inDir := filepath.Join(base, "in")
 	outDir := filepath.Join(base, "out")

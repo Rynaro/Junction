@@ -18,6 +18,7 @@ import (
 	"fmt"
 	"io"
 	"strings"
+	"sync"
 
 	_ "embed"
 
@@ -41,25 +42,32 @@ var (
 
 const planSchemaID = "https://github.com/Rynaro/Junction/schemas/plan.v1.json"
 
-// compiledPlanSchema is a singleton compiled from planSchemaJSON.
-var compiledPlanSchema *jsonschema.Schema
+// compiledPlanSchema is a singleton compiled from planSchemaJSON. Init is
+// guarded by planSchemaOnce so concurrent callers see a single happens-before
+// edge to the assignment.
+var (
+	compiledPlanSchema    *jsonschema.Schema
+	compiledPlanSchemaErr error
+	planSchemaOnce        sync.Once
+)
 
 // getPlanSchema returns the compiled plan JSON schema, compiling it once.
 func getPlanSchema() (*jsonschema.Schema, error) {
-	if compiledPlanSchema != nil {
-		return compiledPlanSchema, nil
-	}
-	c := jsonschema.NewCompiler()
-	c.Draft = jsonschema.Draft2020
-	if err := c.AddResource(planSchemaID, bytes.NewReader(planSchemaJSON)); err != nil {
-		return nil, fmt.Errorf("plan: loading schema: %w", err)
-	}
-	s, err := c.Compile(planSchemaID)
-	if err != nil {
-		return nil, fmt.Errorf("plan: compiling schema: %w", err)
-	}
-	compiledPlanSchema = s
-	return compiledPlanSchema, nil
+	planSchemaOnce.Do(func() {
+		c := jsonschema.NewCompiler()
+		c.Draft = jsonschema.Draft2020
+		if err := c.AddResource(planSchemaID, bytes.NewReader(planSchemaJSON)); err != nil {
+			compiledPlanSchemaErr = fmt.Errorf("plan: loading schema: %w", err)
+			return
+		}
+		s, err := c.Compile(planSchemaID)
+		if err != nil {
+			compiledPlanSchemaErr = fmt.Errorf("plan: compiling schema: %w", err)
+			return
+		}
+		compiledPlanSchema = s
+	})
+	return compiledPlanSchema, compiledPlanSchemaErr
 }
 
 // ---------------------------------------------------------------------------
