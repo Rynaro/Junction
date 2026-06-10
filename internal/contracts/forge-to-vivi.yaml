@@ -1,0 +1,29 @@
+contract_version: "1.0"
+from: forge
+to: vivi
+edge_origin: roster
+performatives_allowed:
+  - PROPOSE
+  - INFORM
+  - CRITIQUE
+artifacts:
+  - kind: reasoning-report
+    schema_ref: ../schemas/per-eidolon/reasoning-report.v1.json
+    required_sections:
+      - decision
+      - hypotheses_summary
+      - reversal_conditions
+      - alternatives_considered
+    evidence_anchor_required: false
+context_delta:
+  token_budget_max: 3000
+  required_handles: []
+trust_level: standard
+notes: >
+  FORGE returns the reasoning report to Vivi, which consulted it during the
+  Plan phase when ambiguity or trade-offs surfaced. Listed in roster:
+  vivi.handoffs.lateral contains forge. CRITIQUE is reserved for the case
+  where FORGE deliberately reframes the question rather than answering it
+  (REFORGE pass). This edge mirrors forge-to-apivr.yaml — Vivi succeeds
+  APIVR-Δ as the default coder seat. Inbound fixture at
+  templates/inbound/reasoning-report.envelope.fixture.json.

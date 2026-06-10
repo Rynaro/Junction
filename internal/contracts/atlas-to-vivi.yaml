@@ -1,0 +1,32 @@
+contract_version: "1.0"
+from: atlas
+to: vivi
+edge_origin: roster
+performatives_allowed:
+  - PROPOSE
+  - INFORM
+  - REFUSE
+artifacts:
+  - kind: scout-report
+    schema_ref: ../schemas/per-eidolon/scout-report.v1.json
+    required_sections:
+      - decision_target
+      - findings
+      - gaps
+      - scope
+      - reuse_first_assets
+    evidence_anchor_required: true
+context_delta:
+  token_budget_max: 4000
+  required_handles:
+    - mission.md
+trust_level: standard
+notes: >
+  ATLAS hands off directly to Vivi when SPECTRA is not deployed (partial
+  team) or when the work is small enough to skip spec authoring. Same
+  artefact kind as the ATLAS→SPECTRA edge but with the additional
+  required_section reuse_first_assets, which Vivi uses to satisfy its
+  Internal-First P0 (I-1: USE → EXTEND → WRAP → CREATE). Vivi is the
+  loop-native default coder (A→P→I→V→Δ/R cycle); this edge mirrors
+  atlas-to-apivr.yaml — Vivi succeeds APIVR-Δ as the default coder seat.
+  Declared in roster: vivi.handoffs.upstream contains atlas.

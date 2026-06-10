@@ -1,0 +1,29 @@
+contract_version: "1.0"
+from: vivi
+to: idg
+edge_origin: roster
+performatives_allowed:
+  - PROPOSE
+  - INFORM
+artifacts:
+  - kind: vivi-completion-report
+    schema_ref: ../schemas/per-eidolon/vivi-completion-report.v1.json
+    required_sections:
+      - what_built
+      - changes
+      - failures_and_why
+      - test_summary
+    evidence_anchor_required: false
+context_delta:
+  token_budget_max: 5000
+  required_handles: []
+trust_level: standard
+notes: >
+  Vivi hands off the completion artefact (session log + delta history +
+  completion report) for IDG to chronicle at the end of the
+  A→P→I→V→Δ/R cycle. Listed in roster: vivi.handoffs.downstream contains
+  idg. Emitted from templates/vivi-completion-report.envelope.json.
+  Uses a dedicated vivi-completion-report profile (not the apivr profile)
+  because Vivi pins eidolon: vivi and kind: vivi-completion-report.
+  Mirrors apivr-to-idg.yaml — Vivi succeeds APIVR-Δ as the default coder
+  seat.

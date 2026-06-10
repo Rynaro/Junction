@@ -30,10 +30,10 @@ import (
 )
 
 // Version is overridden at build time via -ldflags "-X main.Version=...".
-var Version = "0.1.0-dev"
+var Version = "0.3.0-dev"
 
 // ECLVersion records the vendored ECL spec version Junction was built against.
-const ECLVersion = "1.0.0"
+const ECLVersion = "2.0.2"
 
 // stdout is the writer used for normal (non-error) output. Tests may replace
 // this to capture output without spawning a subprocess.

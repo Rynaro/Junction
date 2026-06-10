@@ -1,0 +1,33 @@
+contract_version: "1.0"
+from: vivi
+to: vigil
+edge_origin: roster
+performatives_allowed:
+  - ESCALATE
+  - REQUEST
+  - ACKNOWLEDGE
+artifacts:
+  - kind: repair-failed-report
+    schema_ref: ../schemas/per-eidolon/vivi-repair-failed-report.v1.json
+    required_sections:
+      - failing_tests
+      - reflect_attempts
+      - last_known_state
+      - sandbox_authority
+    evidence_anchor_required: true
+context_delta:
+  token_budget_max: 4000
+  required_handles: []
+trust_level: high
+notes: >
+  Vivi escalates to VIGIL when the Reflect phase (R) exhausts its
+  3-failure threshold on the same category (I-5: Bounded recovery).
+  Performative MUST be ESCALATE for the threshold path; REQUEST is
+  reserved for ad-hoc forensic asks that do not cross the threshold.
+  Listed in roster: vivi.handoffs.lateral contains vigil. Emitted from
+  templates/repair-failed-report.envelope.json. Uses the dedicated
+  vivi-repair-failed-report.v1.json profile (pins eidolon: vivi, same
+  body shape as repair-failed-report.v1.json which pins eidolon: apivr;
+  the kind slug 'repair-failed-report' is shared — emitter distinguished
+  by envelope from.eidolon). Mirrors apivr-to-vigil.yaml — Vivi succeeds
+  APIVR-Δ as the default coder seat.

@@ -1,0 +1,24 @@
+contract_version: "1.0"
+from: vigil
+to: kupo
+edge_origin: roster
+performatives_allowed:
+  - DELEGATE
+  - INFORM
+  - ACKNOWLEDGE
+artifacts:
+  - kind: root-cause-report
+    schema_ref: ../schemas/per-eidolon/root-cause-report.v1.json
+    evidence_anchor_required: false
+context_delta:
+  token_budget_max: 4000
+  required_handles: []
+trust_level: standard
+notes: >
+  VIGIL DELEGATEs a localized, verifier-backed micro-task to Kupo (the low-effort
+  executor) — e.g. a rename, import fix, lockfile/dep-pin bump, config-key edit,
+  or one-line fix identified within its own root-cause-report. Kupo KEEPs only localized
+  (<= 2 files), named-verifier-backed work (else REFUSE/ESCALATE cheaply),
+  patches an ephemeral sandbox, proves it with an external verifier, and returns
+  a verified edit-proposal via kupo-to-vigil. Declared in roster:
+  kupo.handoffs.upstream contains vigil.

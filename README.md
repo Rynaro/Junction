@@ -1,8 +1,8 @@
 # Junction
 
-**ECL v1.0 production harness — dispatch Eidolons with contract-checked hand-offs.**
+**ECL v2.0.2 production harness — dispatch Eidolons with contract-checked hand-offs.**
 
-Junction is a single-binary Go runtime that dispatches Eidolons (ATLAS, SPECTRA, APIVR-Δ, IDG, FORGE, VIGIL) over their installed entry points, treats every hand-off as an ECL v1.0 envelope on disk, and verifies envelopes against the directed-edge contracts in `Rynaro/eidolons-ecl`. It is not a planner — the host LLM (Claude Code) is the planner in the two-phase model. Junction's role: invoke deterministic work, then hand control back to the host for reasoning.
+Junction is a single-binary Go runtime that dispatches Eidolons (ATLAS, SPECTRA, APIVR-Δ, IDG, FORGE, VIGIL, Kupo, Vivi) over their installed entry points, treats every hand-off as an ECL envelope on disk, and verifies envelopes against the directed-edge contracts in `Rynaro/eidolons-ecl`. It is not a planner — the host LLM (Claude Code) is the planner in the two-phase model. Junction's role: invoke deterministic work, then hand control back to the host for reasoning.
 
 ## Quickstart
 
@@ -19,7 +19,7 @@ eidolons harness install
 This installs Junction into `~/.eidolons/cache/junction@<version>/junction` and resolves the version from GitHub Releases (or from `$JUNCTION_VERSION` if set). To pin a specific version:
 
 ```bash
-eidolons harness install 0.1.0
+eidolons harness install 0.3.0
 ```
 
 Verify the install with:
@@ -31,9 +31,9 @@ eidolons harness up
 This prints the binary path and confirms Docker is reachable. A successful output looks like:
 
 ```
-junction 0.1.0 (ECL 1.0.0)
-commit: ed4f53c
-built:  2026-05-15T00:00:00Z
+junction 0.3.0 (ECL 2.0.2)
+commit: <sha>
+built:  2026-06-10T00:00:00Z
 ```
 
 ### 2. Wire the Eidolons nexus
@@ -77,7 +77,7 @@ Run it twice — the second run is a no-op and produces byte-identical output (i
 Step 4 references files under `examples/` — these ship with the Junction repository and aren't seeded into your project by `junction mcp install`. Get a copy:
 
 ```bash
-git clone --depth 1 --branch v0.1.1 https://github.com/Rynaro/Junction.git junction-repo
+git clone --depth 1 --branch v0.3.0 https://github.com/Rynaro/Junction.git junction-repo
 cd junction-repo
 ```
 
@@ -181,13 +181,13 @@ The two-phase execution model: invoke(assemble) → host LLM reasons → invoke(
 - **ECL** — Eidolons Communication Layer (envelopes, performatives, contracts) at https://github.com/Rynaro/eidolons-ecl
 - **Eidolons nexus** — roster, harness CLI, and methodology cortex at https://github.com/Rynaro/eidolons
 
-Junction is a **v1.0-and-v2.0-tolerant reader** during the ECL §7.3 compatibility
-window (through 2027-05-13). The L1 schema accepts `envelope_version` values matching
-`^[12]\.0(\.\d+)?$`; L3/L4 remain the semantic gate for edge and performative
-enforcement. `.eclref` is pinned to v1.0 contracts (commit
-`5d0aaff8f26e0ed5e4b6efa982757ea9ef97891b`). This is not a v2.0-native upgrade: the
-performative set remains closed at 10, no new L3 edges are active, and ISE fields are
-optional/additive — verified against the v2.0 spec on 2026-05-15.
+Junction vendors the ECL v2.0.2 directed-edge contract set (commit
+`1ba60738df4631e75220c38e1921abfe5ec88a1d`). The L1 schema accepts `envelope_version`
+values matching `^[12]\.0(\.\d+)?$` (ECL §7.3 compatibility window through 2027-05-13);
+L3/L4 remain the semantic gate for edge and performative enforcement. The vendored set
+covers 45 directed edges: the original 24 (18 Eidolon-to-Eidolon + 6 human-origin),
+11 Kupo executor edges (ECL #9), and 10 Vivi succession edges (ECL #10). The
+performative set remains closed at 10 per ECL §2.
 
 ## License
 

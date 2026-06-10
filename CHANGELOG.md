@@ -10,6 +10,28 @@ targets — see `README.md` and the spec at
 
 ## [Unreleased]
 
+## [0.3.0] - 2026-06-10
+
+### Changed
+- **Re-vendor ECL contracts at v2.0.2** — updates `internal/contracts/` from
+  eidolons-ecl commit `5d0aaff` (24 YAMLs, ECL #8) to commit
+  `1ba6073` (45 YAMLs, ECL v2.0.2 tag). Closes the L3 "edge not declared"
+  rejection for all Kupo executor and Vivi succession envelopes:
+  - 11 Kupo executor edges (ECL #9): `apivr→kupo`, `atlas→kupo`, `forge→kupo`,
+    `human→kupo`, `kupo→apivr`, `kupo→atlas`, `kupo→forge`, `kupo→spectra`,
+    `kupo→vigil`, `kupo→vivi`, `spectra→kupo`, `vigil→kupo`.
+  - 10 Vivi succession edges (ECL #10): `atlas→vivi`, `forge→vivi`,
+    `human→vivi`, `kupo→vivi`, `spectra→vivi`, `vigil→vivi`, `vivi→forge`,
+    `vivi→idg`, `vivi→kupo`, `vivi→vigil`.
+  - `.eclref` updated to `1ba60738df4631e75220c38e1921abfe5ec88a1d`.
+  - `ECLVersion` constant bumped to `2.0.2`.
+  - Schema-ref paths in the new contracts point to per-eidolon schemas
+    (`vivi-completion-report.v1.json`, `vivi-repair-failed-report.v1.json`);
+    Junction does not resolve schema_ref at runtime (registry reads only
+    from/to/performatives_allowed), so no schema files need to be vendored.
+
+## [0.2.0] - 2026-05-19
+
 ### Added
 - **ReasoningStep provider (v0.2)** — new `internal/reasoning/` package wires
   the host-LLM reasoning step between the assemble and package container phases.
@@ -24,7 +46,6 @@ targets — see `README.md` and the spec at
   Atomic `reasoning.json` write (temp-file + rename). `internal/mcp/server.go`
   gains server-initiated request support (`SendRequest`, capability cache,
   read-loop demuxer). `internal/dispatch.NoopReasoningStep` exported.
-  <!-- IDG: expand prose for [0.2.0] entry when the release is cut -->
 
 ### Fixed
 - Plan dispatch (`junction run --plan`) now correctly threads each step's

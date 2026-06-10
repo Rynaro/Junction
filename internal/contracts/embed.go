@@ -1,9 +1,10 @@
-// Package contracts embeds the ECL v1.0 directed-edge contract YAML files
-// (Eidolon→Eidolon and the six F-HUMAN-EDGE human→Eidolon contracts).
+// Package contracts embeds the ECL v2.1.0 directed-edge contract YAML files
+// (Eidolon→Eidolon, human→Eidolon, kupo executor, and vivi succession edges).
 //
-// These files are vendored from eidolons-ecl at the version in VERSION, plus
-// the six human-to-<eidolon>.yaml files authored as part of Junction F1
-// (S19a). They are embedded at build time so the Junction binary is fully
+// These files are vendored from eidolons-ecl at the version in VERSION.
+// 45 YAML files total: 24 original edges (6 human + 18 Eidolon-to-Eidolon),
+// 11 Kupo executor edges (ECL #9), and 10 Vivi succession edges (ECL #10).
+// They are embedded at build time so the Junction binary is fully
 // self-contained and verifiable without network access.
 //
 // The FS is exposed as Contracts for use by contract.NewRegistryFromFS.

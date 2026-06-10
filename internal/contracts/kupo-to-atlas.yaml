@@ -1,0 +1,22 @@
+contract_version: "1.0"
+from: kupo
+to: atlas
+edge_origin: roster
+performatives_allowed:
+  - INFORM
+  - ESCALATE
+  - REFUSE
+  - ACKNOWLEDGE
+artifacts:
+  - kind: edit-proposal
+    schema_ref: ../schemas/per-eidolon/edit-proposal.v1.json
+    evidence_anchor_required: false
+context_delta:
+  token_budget_max: 4000
+  required_handles: []
+trust_level: standard
+notes: >
+  Kupo replies to ATLAS with INFORM/ESCALATE/REFUSE/ACKNOWLEDGE only — never
+  PROPOSE, because a read-only scout cannot apply a patch. If ATLAS delegates a
+  quick lookup, Kupo INFORMs the result; if the task requires an applied edit,
+  Kupo ESCALATEs to a write-capable parent. Reverse of atlas-to-kupo (roster).
