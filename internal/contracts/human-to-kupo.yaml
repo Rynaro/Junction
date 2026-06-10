@@ -1,0 +1,28 @@
+contract_version: "1.0"
+from: human
+to: kupo
+edge_origin: implicit
+performatives_allowed:
+  - REQUEST
+  - INFORM
+  - CRITIQUE
+  - REFUSE
+  - ACKNOWLEDGE
+  - ESCALATE
+artifacts:
+  - kind: prompt
+    schema_ref: ../schemas/per-eidolon/_base-profile.v1.json
+    evidence_anchor_required: false
+context_delta:
+  token_budget_max: 4000
+  required_handles: []
+trust_level: standard
+notes: >
+  Human-origin edge into Kupo. The originator may REQUEST a quick localized,
+  verifier-backed micro-task (rename, import fix, lockfile bump, lint autofix),
+  INFORM additional context, CRITIQUE a prior edit-proposal for revision, REFUSE
+  a target/framing, ACKNOWLEDGE to close a gate, or ESCALATE a blocker. Humans
+  MUST NOT emit PROPOSE, DECIDE, DELEGATE, or RESUME (PROPOSE collapses to
+  REQUEST; DECIDE is reserved for an evaluator Eidolon; DELEGATE is reserved for
+  Eidolon-origin task binding; RESUME is harness-emitted). edge_origin: implicit
+  — a human may invoke the executor directly, outside a roster chain.

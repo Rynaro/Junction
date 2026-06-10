@@ -1,0 +1,30 @@
+contract_version: "1.0"
+from: kupo
+to: vivi
+edge_origin: roster
+performatives_allowed:
+  - PROPOSE
+  - INFORM
+  - ESCALATE
+  - REFUSE
+  - ACKNOWLEDGE
+  - RESUME
+artifacts:
+  - kind: edit-proposal
+    schema_ref: ../schemas/per-eidolon/edit-proposal.v1.json
+    evidence_anchor_required: false
+context_delta:
+  token_budget_max: 4000
+  required_handles: []
+trust_level: standard
+notes: >
+  Kupo returns a verified edit-proposal to Vivi (the parent that
+  DELEGATEd): search/replace or whole-file edits proven GREEN by a NAMED
+  external verifier in an ephemeral sandbox. The PARENT (Vivi) applies
+  the patch to the real tree and commits — Kupo never writes the real
+  tree (PROPOSE-only) and never routes work onward (worker, never router).
+  On out-of-scope or budget exhaustion, Kupo ESCALATEs or REFUSEs.
+  Reverse of vivi-to-kupo.yaml. Closes the deferred vivi↔kupo item noted
+  in the v2.1.0 Kupo-executor release (contracts/README.md §Kupo edges).
+  Mirrors kupo-to-apivr.yaml — Vivi succeeds APIVR-Δ as the default
+  coder seat.

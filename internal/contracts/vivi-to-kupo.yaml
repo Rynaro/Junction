@@ -1,0 +1,29 @@
+contract_version: "1.0"
+from: vivi
+to: kupo
+edge_origin: roster
+performatives_allowed:
+  - DELEGATE
+  - INFORM
+  - ACKNOWLEDGE
+artifacts:
+  - kind: vivi-completion-report
+    schema_ref: ../schemas/per-eidolon/vivi-completion-report.v1.json
+    evidence_anchor_required: false
+context_delta:
+  token_budget_max: 4000
+  required_handles: []
+trust_level: standard
+notes: >
+  Vivi DELEGATEs a localized, verifier-backed micro-task to Kupo (the
+  low-effort executor) — e.g. a rename, import fix, lockfile/dep-pin
+  bump, config-key edit, or one-line fix identified within its own
+  vivi-completion-report. Kupo KEEPs only localized (<= 2 files),
+  named-verifier-backed work (else REFUSE/ESCALATE cheaply), patches an
+  ephemeral sandbox, proves it with an external verifier, and returns a
+  verified edit-proposal via kupo-to-vivi. Vivi applies the patch to
+  the real tree and commits — Kupo never writes the real tree
+  (PROPOSE-only) and never routes work onward (worker, never router).
+  Closes the deferred vivi↔kupo item noted in the v2.1.0 Kupo-executor
+  release (contracts/README.md §Kupo edges). Mirrors apivr-to-kupo.yaml
+  — Vivi succeeds APIVR-Δ as the default coder seat.
