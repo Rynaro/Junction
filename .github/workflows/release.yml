@@ -132,7 +132,10 @@ jobs:
             -v "$PWD/dist:/d:ro" \
             gcr.io/distroless/static-debian12:nonroot \
             /d/junction-linux-${ARCH} --version > smoke.out
-          head -n1 smoke.out | grep -Fxq "junction ${{ inputs.version }} (ECL 1.0.0)" || {
+          # ECL version asserted shape-only: it tracks the vendored contract
+          # set (cmd/junction/main.go ECLVersion) and moves on re-vendor PRs —
+          # a hardcoded literal here broke the v0.3.0 release (ECL 2.0.2).
+          head -n1 smoke.out | grep -Eq "^junction ${{ inputs.version }} \(ECL [0-9][0-9.]*\)$" || {
             echo "G-J0.1-2 FAIL: unexpected --version output"
             cat smoke.out
             exit 1
